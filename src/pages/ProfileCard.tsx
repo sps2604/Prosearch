@@ -2,7 +2,17 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import AfterLoginNavbar from "../components/AfterLoginNavbar";
-import { Download, ArrowLeft, Share2, Phone, Mail, MapPin, Globe, Linkedin, Edit } from "lucide-react";
+import {
+  Download,
+  ArrowLeft,
+  Share2,
+  Phone,
+  Mail,
+  MapPin,
+  Globe,
+  Linkedin,
+  Edit,
+} from "lucide-react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 
@@ -78,28 +88,34 @@ export default function ProfileCard() {
     if (!cardRef.current || !userProfile) return;
     setDownloading(true);
     try {
+      // Capture the card DOM element with html2canvas
       const canvas = await html2canvas(cardRef.current, {
         scale: 2,
         backgroundColor: "#ffffff",
         useCORS: true,
-        allowTaint: true,
         height: cardRef.current.scrollHeight,
         width: cardRef.current.scrollWidth,
       });
 
       if (format === "png") {
+        // Create a downloadable PNG file
         const link = document.createElement("a");
         link.download = `${userProfile.name}-profile-card.png`;
-        link.href = canvas.toDataURL();
+        link.href = canvas.toDataURL("image/png");
         link.click();
       } else {
+        // Create a PDF with the captured canvas image
         const imgData = canvas.toDataURL("image/png");
+        const pdfWidth = 595.28; // A4 size width in points (approx 210mm)
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width; // keep aspect ratio
+
         const pdf = new jsPDF({
           orientation: "portrait",
-          unit: "px",
-          format: [canvas.width / 2, canvas.height / 2],
+          unit: "pt",
+          format: [pdfWidth, pdfHeight],
         });
-        pdf.addImage(imgData, "PNG", 0, 0, canvas.width / 2, canvas.height / 2);
+
+        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
         pdf.save(`${userProfile.name}-profile-card.pdf`);
       }
     } catch (error) {
@@ -240,9 +256,12 @@ export default function ProfileCard() {
           <div className="px-6 py-6 bg-white">
             {/* Professional Summary */}
             <div className="mb-6">
-              <h2 className="text-lg font-semibold text-blue-600 mb-3">Professional Summary</h2>
+              <h2 className="text-lg font-semibold text-blue-600 mb-3">
+                Professional Summary
+              </h2>
               <p className="text-gray-700 text-sm leading-relaxed">
-                {userProfile.summary || `${userProfile.profession} with ${userProfile.experience} years of experience. Skilled professional ready to deliver exceptional results.`}
+                {userProfile.summary ||
+                  `${userProfile.profession} with ${userProfile.experience} years of experience. Skilled professional ready to deliver exceptional results.`}
               </p>
             </div>
 
@@ -291,7 +310,7 @@ export default function ProfileCard() {
                 <h3 className="text-sm font-semibold text-gray-800">Social Media</h3>
                 <h3 className="text-sm font-semibold text-gray-800">Share This Profile</h3>
               </div>
-              
+
               <div className="flex justify-between items-center mt-2">
                 {/* Social Media Icons */}
                 <div className="flex gap-2">
