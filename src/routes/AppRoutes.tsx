@@ -18,6 +18,8 @@ import Profile from "../pages/Profile";
 // New Profile Pages
 import ProfileCard from "../pages/ProfileCard";
 import PublicProfile from "../pages/PublicProfile";
+import PublicProfileCard from "../pages/PublicProfileCard";
+
 
 export default function AppRoutes() {
   return (
@@ -43,6 +45,7 @@ export default function AppRoutes() {
           <Route path="/create-profile" element={<CreateProfile />} />
 
           {/* Profile Pages */}
+          <Route path="/public-profile/:userId" element={<PublicProfileCard />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile-card" element={<ProfileCard />} />
           <Route path="/public-profile/:name" element={<PublicProfile />} />

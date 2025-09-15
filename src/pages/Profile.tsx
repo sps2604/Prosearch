@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import AfterLoginNavbar from "../components/AfterLoginNavbar";
@@ -12,8 +12,11 @@ import {
   Twitter,
   Linkedin,
   Mail,
-  X
+  X,
+  MoreVertical
 } from "lucide-react";
+import { jsPDF } from "jspdf";
+import { toPng } from "html-to-image";
 
 interface UserProfile {
   name: string;
@@ -41,8 +44,12 @@ export default function ProfilePage() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  // ✅ ADD: Mobile dropdown state
+  const [showMobileActions, setShowMobileActions] = useState(false);
   const navigate = useNavigate();
+  const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -62,7 +69,6 @@ export default function ProfilePage() {
           return;
         }
 
-        // Fetch from user_profiles table only
         const { data: userProfileData, error: userProfileError } = await supabase
           .from("user_profiles")
           .select("*")
@@ -71,7 +77,6 @@ export default function ProfilePage() {
 
         if (userProfileError) {
           if (userProfileError.code === 'PGRST116') {
-            // No profile found - redirect to create profile
             setError("Profile not found. Please create your profile first.");
             setTimeout(() => navigate("/create-profile"), 2000);
           } else {
@@ -94,13 +99,37 @@ export default function ProfilePage() {
     navigate("/profile-card");
   };
 
-  const handleDownloadCard = () => {
-    // This will trigger the download functionality
-    // You can implement PDF generation or image capture here
-    const element = document.createElement('a');
-    element.href = `/api/download-card/${userProfile?.name}`; // You'll need to create this endpoint
-    element.download = `${userProfile?.name}-card.pdf`;
-    element.click();
+  const handleDownloadCard = async () => {
+    if (!cardRef.current || !userProfile) return;
+    setDownloading(true);
+    
+    try {
+      const dataUrl = await toPng(cardRef.current, {
+        cacheBust: true,
+        quality: 1.0,
+        pixelRatio: 2,
+        backgroundColor: '#ffffff'
+      });
+
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      
+      const imgProps = pdf.getImageProperties(dataUrl);
+      const imgWidth = pageWidth - 20;
+      const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+      
+      const x = 10;
+      const y = imgHeight > pageHeight - 20 ? 10 : (pageHeight - imgHeight) / 2;
+      
+      pdf.addImage(dataUrl, "PNG", x, y, imgWidth, Math.min(imgHeight, pageHeight - 20));
+      pdf.save(`${userProfile.name.replace(/\s+/g, '_')}-profile.pdf`);
+    } catch (error) {
+      console.error("Download failed:", error);
+      alert("Download failed. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const handleShare = () => {
@@ -108,23 +137,29 @@ export default function ProfilePage() {
   };
 
   const handleCopyLink = async () => {
-    const profileUrl = `${window.location.origin}/public-profile/${userProfile?.name}`;
+    const { data: { user } } = await supabase.auth.getUser();
+    const profileUrl = `${window.location.origin}/public-profile/${user?.id}`;
+    
     try {
       await navigator.clipboard.writeText(profileUrl);
       alert("Profile link copied to clipboard!");
+      setShowShareModal(false);
     } catch (err) {
       console.error("Failed to copy link:", err);
     }
   };
 
-  const handleWhatsAppShare = () => {
-    const profileUrl = `${window.location.origin}/public-profile/${userProfile?.name}`;
+  const handleWhatsAppShare = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const profileUrl = `${window.location.origin}/public-profile/${user?.id}`;
     const message = `Check out my professional profile: ${profileUrl}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+    setShowShareModal(false);
   };
 
-  const handleSocialShare = (platform: string) => {
-    const profileUrl = `${window.location.origin}/public-profile/${userProfile?.name}`;
+  const handleSocialShare = async (platform: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const profileUrl = `${window.location.origin}/public-profile/${user?.id}`;
     const text = `Check out my professional profile`;
     
     const urls = {
@@ -135,6 +170,7 @@ export default function ProfilePage() {
     };
     
     window.open(urls[platform as keyof typeof urls], '_blank');
+    setShowShareModal(false);
   };
 
   if (loading) return (
@@ -159,87 +195,139 @@ export default function ProfilePage() {
     <>
       <AfterLoginNavbar />
 
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
-        {/* Header with Action Buttons */}
-        <div className="bg-white shadow-md rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-6">
+      <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6" ref={cardRef}>
+        {/* ✅ RESPONSIVE Header with Action Buttons */}
+        <div className="bg-white shadow-md rounded-2xl p-4 md:p-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            {/* Profile Info */}
+            <div className="flex items-center gap-4 md:gap-6">
               {userProfile.logo_url ? (
                 <img
                   src={userProfile.logo_url}
                   alt="Profile"
-                  className="w-20 h-20 rounded-full object-cover"
+                  className="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover"
                 />
               ) : (
-                <div className="w-20 h-20 bg-gray-300 rounded-full flex items-center justify-center">
-                  <span className="text-gray-500 text-2xl">
+                <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-300 rounded-full flex items-center justify-center">
+                  <span className="text-gray-500 text-xl md:text-2xl">
                     {userProfile.name?.charAt(0)?.toUpperCase() || '?'}
                   </span>
                 </div>
               )}
               <div>
-                <h1 className="text-2xl font-bold">{userProfile.name}</h1>
-                <p className="text-gray-600">{userProfile.profession}</p>
-                <p className="text-sm text-gray-500">{userProfile.experience} years experience</p>
+                <h1 className="text-xl md:text-2xl font-bold">{userProfile.name}</h1>
+                <p className="text-gray-600 text-sm md:text-base">{userProfile.profession}</p>
+                <p className="text-xs md:text-sm text-gray-500">{userProfile.experience} years experience</p>
               </div>
             </div>
             
-            {/* Action Buttons */}
-            <div className="flex flex-col gap-3">
+            {/* ✅ DESKTOP: Original Large Buttons (hidden on mobile) */}
+            <div className="hidden sm:flex flex-col sm:flex-row gap-2 sm:gap-3 w-full md:w-auto">
               <button
                 onClick={handleViewCard}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
               >
                 <Eye size={16} />
                 View Card
               </button>
               <button
                 onClick={handleDownloadCard}
-                className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                disabled={downloading}
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm disabled:opacity-50"
               >
                 <Download size={16} />
-                Download Card
+                {downloading ? "Downloading..." : "Download Card"}
               </button>
               <button
                 onClick={handleShare}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors text-sm"
               >
                 <Share2 size={16} />
                 Share Card
               </button>
             </div>
+
+            {/* ✅ MOBILE: Dropdown Menu (only visible on mobile) */}
+            <div className="sm:hidden relative ml-auto">
+              <button
+                onClick={() => setShowMobileActions(!showMobileActions)}
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <MoreVertical size={20} />
+              </button>
+              
+              {/* Mobile Actions Dropdown */}
+              {showMobileActions && (
+                <div 
+                  className="absolute right-0 top-12 w-48 rounded-lg shadow-lg border overflow-hidden z-10"
+                  style={{ backgroundColor: '#ffffff' }}
+                >
+                  <button
+                    onClick={() => {
+                      handleViewCard();
+                      setShowMobileActions(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <Eye size={16} />
+                    <span>View Card</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleDownloadCard();
+                      setShowMobileActions(false);
+                    }}
+                    disabled={downloading}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  >
+                    <Download size={16} />
+                    <span>{downloading ? "Downloading..." : "Download Card"}</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleShare();
+                      setShowMobileActions(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <Share2 size={16} />
+                    <span>Share Card</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Contact Info */}
-        <div className="bg-white shadow-md rounded-2xl p-6">
-          <h2 className="text-xl font-semibold mb-4">Contact Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {userProfile.mobile && <p>📞 Mobile: {userProfile.mobile}</p>}
-            {userProfile.whatsapp && <p>💬 WhatsApp: {userProfile.whatsapp}</p>}
-            {userProfile.email && <p>📧 Email: {userProfile.email}</p>}
-            {userProfile.address && <p>📍 Address: {userProfile.address}</p>}
-            {userProfile.website && <p>🌐 Website: {userProfile.website}</p>}
+        {/* ✅ RESPONSIVE Contact Info */}
+        <div className="bg-white shadow-md rounded-2xl p-4 md:p-6">
+          <h2 className="text-lg md:text-xl font-semibold mb-4">Contact Information</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm md:text-base">
+            {userProfile.mobile && <p>📞 {userProfile.mobile}</p>}
+            {userProfile.whatsapp && <p>💬 {userProfile.whatsapp}</p>}
+            {userProfile.email && <p>📧 {userProfile.email}</p>}
+            {userProfile.address && <p>📍 {userProfile.address}</p>}
+            {userProfile.website && <p>🌐 {userProfile.website}</p>}
           </div>
         </div>
 
         {/* About Me */}
         {userProfile.summary && (
-          <div className="bg-white shadow-md rounded-2xl p-6">
-            <h2 className="text-xl font-semibold mb-4">About Me</h2>
-            <p className="text-gray-700 leading-relaxed">{userProfile.summary}</p>
+          <div className="bg-white shadow-md rounded-2xl p-4 md:p-6">
+            <h2 className="text-lg md:text-xl font-semibold mb-4">About Me</h2>
+            <p className="text-gray-700 leading-relaxed text-sm md:text-base">{userProfile.summary}</p>
           </div>
         )}
 
-        {/* Skills */}
+        {/* ✅ RESPONSIVE Skills */}
         {userProfile.skills && (
-          <div className="bg-white shadow-md rounded-2xl p-6">
-            <h2 className="text-xl font-semibold mb-4">Core Skills</h2>
+          <div className="bg-white shadow-md rounded-2xl p-4 md:p-6">
+            <h2 className="text-lg md:text-xl font-semibold mb-4">Core Skills</h2>
             <div className="flex flex-wrap gap-2">
               {userProfile.skills.split(',').map((skill, index) => (
                 <span
                   key={index}
-                  className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                  className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs md:text-sm"
                 >
                   {skill.trim()}
                 </span>
@@ -250,55 +338,55 @@ export default function ProfilePage() {
 
         {/* Languages */}
         {userProfile.languages && (
-          <div className="bg-white shadow-md rounded-2xl p-6">
-            <h2 className="text-xl font-semibold mb-4">Languages</h2>
-            <p className="text-gray-700">{userProfile.languages}</p>
+          <div className="bg-white shadow-md rounded-2xl p-4 md:p-6">
+            <h2 className="text-lg md:text-xl font-semibold mb-4">Languages</h2>
+            <p className="text-gray-700 text-sm md:text-base">{userProfile.languages}</p>
           </div>
         )}
 
-        {/* Social Links */}
-        <div className="bg-white shadow-md rounded-2xl p-6">
-          <h2 className="text-xl font-semibold mb-4">Social Media & Links</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {/* ✅ RESPONSIVE Social Links */}
+        <div className="bg-white shadow-md rounded-2xl p-4 md:p-6">
+          <h2 className="text-lg md:text-xl font-semibold mb-4">Social Media & Links</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {userProfile.linkedin && (
               <a href={userProfile.linkedin} target="_blank" rel="noopener noreferrer" 
-                 className="text-blue-600 hover:underline">
+                 className="text-blue-600 hover:underline text-sm md:text-base">
                 🔗 LinkedIn
               </a>
             )}
             {userProfile.instagram && (
               <a href={userProfile.instagram} target="_blank" rel="noopener noreferrer"
-                 className="text-pink-600 hover:underline">
+                 className="text-pink-600 hover:underline text-sm md:text-base">
                 📸 Instagram
               </a>
             )}
             {userProfile.facebook && (
               <a href={userProfile.facebook} target="_blank" rel="noopener noreferrer"
-                 className="text-blue-800 hover:underline">
+                 className="text-blue-800 hover:underline text-sm md:text-base">
                 📘 Facebook
               </a>
             )}
             {userProfile.youtube && (
               <a href={userProfile.youtube} target="_blank" rel="noopener noreferrer"
-                 className="text-red-600 hover:underline">
+                 className="text-red-600 hover:underline text-sm md:text-base">
                 ▶️ YouTube
               </a>
             )}
             {userProfile.twitter && (
               <a href={userProfile.twitter} target="_blank" rel="noopener noreferrer"
-                 className="text-blue-400 hover:underline">
+                 className="text-blue-400 hover:underline text-sm md:text-base">
                 🐦 Twitter
               </a>
             )}
             {userProfile.github && (
               <a href={userProfile.github} target="_blank" rel="noopener noreferrer"
-                 className="text-gray-800 hover:underline">
+                 className="text-gray-800 hover:underline text-sm md:text-base">
                 💻 GitHub
               </a>
             )}
             {userProfile.google_my_business && (
               <a href={userProfile.google_my_business} target="_blank" rel="noopener noreferrer"
-                 className="text-green-600 hover:underline">
+                 className="text-green-600 hover:underline text-sm md:text-base">
                 📍 Google My Business
               </a>
             )}
@@ -306,10 +394,10 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Share Modal */}
+      {/* ✅ RESPONSIVE Share Modal */}
       {showShareModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Share Profile</h3>
               <button
@@ -371,6 +459,14 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ✅ Mobile: Close dropdown when clicking outside */}
+      {showMobileActions && (
+        <div 
+          className="fixed inset-0 z-0 sm:hidden" 
+          onClick={() => setShowMobileActions(false)}
+        />
       )}
     </>
   );

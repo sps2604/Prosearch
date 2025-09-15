@@ -32,7 +32,9 @@ export default function ProfileCard() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [downloading, setDownloading] = useState(false);
+  // ✅ SEPARATE LOADING STATES FOR EACH BUTTON
+  const [downloadingPng, setDownloadingPng] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -75,9 +77,16 @@ export default function ProfileCard() {
     fetchProfile();
   }, [navigate]);
 
+  // ✅ UPDATED DOWNLOAD FUNCTION WITH SEPARATE STATES
   const handleDownload = async (format: "pdf" | "png") => {
     if (!cardRef.current || !userProfile) return;
-    setDownloading(true);
+    
+    // Set the appropriate loading state
+    if (format === "png") {
+      setDownloadingPng(true);
+    } else {
+      setDownloadingPdf(true);
+    }
     
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -113,43 +122,54 @@ export default function ProfileCard() {
       console.error("Download failed:", error);
       alert("Download failed: " + (error as Error).message);
     } finally {
-      setDownloading(false);
+      // Clear the appropriate loading state
+      if (format === "png") {
+        setDownloadingPng(false);
+      } else {
+        setDownloadingPdf(false);
+      }
     }
   };
 
   const handleShare = async () => {
-    const profileUrl = `${window.location.origin}/profile-card`;
-    
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `${userProfile?.name}'s Professional Profile`,
-          text: `Check out ${userProfile?.name}'s profile - ${userProfile?.profession}`,
-          url: profileUrl,
-        });
-        return;
-      } catch (error) {
-        console.log("Share failed, using fallback:", error);
-      }
-    }
-    
-    const shareText = `🔗 ${userProfile?.name}'s Profile\n\n${userProfile?.profession}\n\nView profile: ${profileUrl}`;
-    
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  
+  // Create public profile URL with user ID
+  const profileUrl = `${window.location.origin}/public-profile/${user?.id}`;
+  
+  if (navigator.share) {
     try {
-      await navigator.clipboard.writeText(shareText);
-      alert("✅ Profile details copied to clipboard!");
+      await navigator.share({
+        title: `${userProfile?.name}'s Professional Profile`,
+        text: `Check out ${userProfile?.name}'s profile - ${userProfile?.profession}`,
+        url: profileUrl,
+      });
+      return;
     } catch (error) {
-      const textArea = document.createElement('textarea');
-      textArea.value = shareText;
-      textArea.style.position = 'fixed';
-      textArea.style.opacity = '0';
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      alert("✅ Profile details copied to clipboard!");
+      console.log("Share failed, using fallback:", error);
     }
-  };
+  }
+  
+  const shareText = `🔗 ${userProfile?.name}'s Profile\n\n${userProfile?.profession}\n\nView profile: ${profileUrl}`;
+  
+  try {
+    await navigator.clipboard.writeText(shareText);
+    alert("✅ Profile details copied to clipboard!");
+  } catch (error) {
+    const textArea = document.createElement('textarea');
+    textArea.value = shareText;
+    textArea.style.position = 'fixed';
+    textArea.style.opacity = '0';
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+    alert("✅ Profile details copied to clipboard!");
+  }
+};
+
 
   if (loading)
     return (
@@ -178,7 +198,7 @@ export default function ProfileCard() {
 
       <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         
-        {/* ✅ DESKTOP VIEW: Original Large Buttons (hidden on mobile) */}
+        {/* ✅ DESKTOP VIEW: Fixed with separate loading states */}
         <div className="hidden sm:flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
           <button
             onClick={() => navigate("/profile")}
@@ -199,28 +219,27 @@ export default function ProfileCard() {
             </button>
             <button
               onClick={() => handleDownload("png")}
-              disabled={downloading}
+              disabled={downloadingPng}
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 sm:py-2 text-white rounded-lg transition-colors disabled:opacity-50"
               style={{ backgroundColor: '#2563eb' }}
             >
               <Download size={16} />
-              {downloading ? "Downloading..." : "PNG"}
+              {downloadingPng ? "Downloading..." : "PNG"}
             </button>
             <button
               onClick={() => handleDownload("pdf")}
-              disabled={downloading}
+              disabled={downloadingPdf}
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 sm:py-2 text-white rounded-lg transition-colors disabled:opacity-50"
               style={{ backgroundColor: '#059669' }}
             >
               <Download size={16} />
-              {downloading ? "Downloading..." : "PDF"}
+              {downloadingPdf ? "Downloading..." : "PDF"}
             </button>
           </div>
         </div>
 
-        {/* ✅ MOBILE VIEW: Modern Compact Header (only visible on mobile) */}
+        {/* ✅ MOBILE VIEW: Fixed with separate loading states */}
         <div className="flex sm:hidden items-center justify-between mb-6">
-          {/* Back Button */}
           <button
             onClick={() => navigate("/profile")}
             className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
@@ -228,7 +247,6 @@ export default function ProfileCard() {
             <ArrowLeft size={20} />
           </button>
 
-          {/* Mobile Dropdown Menu */}
           <div className="relative">
             <button
               onClick={() => setShowActions(!showActions)}
@@ -237,7 +255,6 @@ export default function ProfileCard() {
               <MoreVertical size={20} />
             </button>
             
-            {/* Dropdown Menu */}
             {showActions && (
               <div 
                 className="absolute right-0 top-12 w-48 rounded-lg shadow-lg border overflow-hidden z-10"
@@ -258,42 +275,40 @@ export default function ProfileCard() {
                     handleDownload("png");
                     setShowActions(false);
                   }}
-                  disabled={downloading}
+                  disabled={downloadingPng}
                   className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   <Download size={16} />
-                  <span>Download PNG</span>
+                  <span>{downloadingPng ? "Downloading PNG..." : "Download PNG"}</span>
                 </button>
                 <button
                   onClick={() => {
                     handleDownload("pdf");
                     setShowActions(false);
                   }}
-                  disabled={downloading}
+                  disabled={downloadingPdf}
                   className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   <Download size={16} />
-                  <span>Download PDF</span>
+                  <span>{downloadingPdf ? "Downloading PDF..." : "Download PDF"}</span>
                 </button>
               </div>
             )}
           </div>
         </div>
 
-        {/* Profile Card */}
+        {/* Profile Card - No changes needed here */}
         <div
           ref={cardRef}
           className="w-full max-w-md mx-auto rounded-2xl shadow-2xl overflow-hidden"
           style={{ backgroundColor: '#ffffff' }}
         >
-          {/* ✅ CLEAN HEADER WITH NO EDIT/LOGOUT BUTTONS */}
           <div 
             className="relative px-6 py-8 text-white"
             style={{
               background: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #1d4ed8 100%)'
             }}
           >
-            {/* Profile Image */}
             <div className="flex justify-center mb-4">
               {userProfile.logo_url ? (
                 <img
@@ -319,15 +334,12 @@ export default function ProfileCard() {
               )}
             </div>
 
-            {/* Name */}
             <h1 className="text-2xl font-bold text-center text-white mb-1">
               {userProfile.name}
             </h1>
           </div>
 
-          {/* White Content Section */}
           <div className="px-6 py-6" style={{ backgroundColor: '#ffffff' }}>
-            {/* Professional Summary */}
             <div className="mb-6">
               <h2 className="text-lg font-semibold mb-3" style={{ color: '#2563eb' }}>
                 Professional Summary
@@ -337,7 +349,6 @@ export default function ProfileCard() {
               </p>
             </div>
 
-            {/* Contact Information */}
             <div className="space-y-3">
               {userProfile.mobile && (
                 <div className="flex items-center gap-3" style={{ color: '#374151' }}>
@@ -388,7 +399,6 @@ export default function ProfileCard() {
               )}
             </div>
 
-            {/* Social Media Links */}
             <div className="mt-6 pt-4" style={{ borderTop: '1px solid #f3f4f6' }}>
               <div className="flex justify-between items-center">
                 <h3 className="text-sm font-semibold" style={{ color: '#1f2937' }}>Social Media</h3>
@@ -396,7 +406,6 @@ export default function ProfileCard() {
               </div>
               
               <div className="flex justify-between items-center mt-2">
-                {/* Social Media Icons */}
                 <div className="flex gap-2">
                   {userProfile.linkedin && (
                     <a
@@ -422,7 +431,6 @@ export default function ProfileCard() {
                   )}
                 </div>
 
-                {/* Share Icons */}
                 <div className="flex gap-2">
                   <button
                     onClick={handleShare}
@@ -447,7 +455,6 @@ export default function ProfileCard() {
               </div>
             </div>
 
-            {/* Footer */}
             <div className="mt-4 pt-4 text-center" style={{ borderTop: '1px solid #f3f4f6' }}>
               <p className="text-xs" style={{ color: '#9ca3af' }}>Powered by Softcadd</p>
             </div>
@@ -455,7 +462,6 @@ export default function ProfileCard() {
         </div>
       </div>
 
-      {/* Mobile: Close dropdown when clicking outside */}
       {showActions && (
         <div 
           className="fixed inset-0 z-0 sm:hidden" 
