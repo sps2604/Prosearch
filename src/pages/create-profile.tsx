@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AfterLoginNavbar from "../components/AfterLoginNavbar";
 import { FaUser, FaAddressBook, FaLink, FaUpload, FaTimes } from "react-icons/fa";
@@ -12,8 +12,6 @@ export default function CreateProfile() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [uploading, setUploading] = useState(false);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [authError, setAuthError] = useState<string>("");
   const navigate = useNavigate();
 
   // Form data
@@ -39,128 +37,22 @@ export default function CreateProfile() {
     google_my_business: "",
   });
 
-  // ✅ SIMPLIFIED: Better session verification without timeout issues
-  useEffect(() => {
-    const verifySession = async () => {
-      try {
-        console.log('=== CHECKING AUTH STATE ===');
-        
-        // Simple session check without complex verification
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Session error:', sessionError);
-          setAuthError("Authentication error. Please login again.");
-          setAuthLoading(false);
-          return;
-        }
-
-        if (session && session.user) {
-          console.log('✅ Session found:', session.user.id);
-          
-          // Check if user already has a profile
-          try {
-            const { data: existingProfile } = await supabase
-              .from('user_profiles')
-              .select('id')
-              .eq('user_id', session.user.id)
-              .single();
-
-            if (existingProfile) {
-              console.log('User already has profile, redirecting...');
-              navigate('/profile');
-              return;
-            }
-          } catch (profileError) {
-            console.log('No existing profile found, continuing...');
-          }
-
-          console.log('✅ Ready to create profile');
-          setAuthLoading(false);
-          return;
-        }
-
-        // If no session, check if we're in the middle of email confirmation
-        const urlHash = window.location.hash;
-        if (urlHash.includes('access_token') || urlHash.includes('refresh_token')) {
-          console.log('🔗 Email confirmation detected, waiting for auth...');
-          // Don't set error, just wait for auth state change
-          return;
-        }
-
-        console.log('❌ No session and no confirmation tokens');
-        setAuthError("No active session. Please login again.");
-        setAuthLoading(false);
-
-      } catch (error) {
-        console.error('Auth verification error:', error);
-        setAuthError("Authentication check failed. Please try again.");
-        setAuthLoading(false);
-      }
-    };
-
-    verifySession();
-  }, [navigate]);
-
-  // ✅ IMPROVED: Auth state change handler for email confirmation
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('🔄 Auth state change:', event, !!session);
-        
-        if (event === 'SIGNED_IN' && session) {
-          console.log('✅ User signed in successfully');
-          
-          // Check if user already has a profile
-          try {
-            const { data: existingProfile } = await supabase
-              .from('user_profiles')
-              .select('id')
-              .eq('user_id', session.user.id)
-              .single();
-
-            if (existingProfile) {
-              console.log('User already has profile, redirecting...');
-              navigate('/profile');
-              return;
-            }
-          } catch (profileError) {
-            console.log('No existing profile found, ready to create...');
-          }
-          
-          setAuthLoading(false);
-          setAuthError("");
-        }
-        
-        if (event === 'SIGNED_OUT') {
-          console.log('❌ User signed out');
-          navigate('/login');
-        }
-
-        if (event === 'TOKEN_REFRESHED') {
-          console.log('🔄 Token refreshed');
-          setAuthLoading(false);
-          setAuthError("");
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  // Handle file selection
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate file type
       const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
       if (!validTypes.includes(file.type)) {
         alert('Please select a valid image file (JPEG, PNG, or WebP)');
         return;
       }
 
+      // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         alert('File size must be less than 5MB');
         return;
@@ -168,6 +60,7 @@ export default function CreateProfile() {
 
       setSelectedFile(file);
       
+      // Create preview
       const reader = new FileReader();
       reader.onload = (e) => {
         setPreviewUrl(e.target?.result as string);
@@ -176,25 +69,32 @@ export default function CreateProfile() {
     }
   };
 
+  // Remove selected file
   const removeSelectedFile = () => {
     setSelectedFile(null);
     setPreviewUrl("");
+    // Clear the file input
     const fileInput = document.getElementById('profile-image') as HTMLInputElement;
     if (fileInput) {
       fileInput.value = '';
     }
   };
 
+  // Upload file to Supabase Storage
   const uploadProfileImage = async (userId: string): Promise<string | null> => {
     if (!selectedFile) return null;
 
     try {
       console.log('Starting upload for user:', userId);
       
+      // Create unique filename
       const fileExt = selectedFile.name.split('.').pop();
       const fileName = `${userId}-${Date.now()}.${fileExt}`;
       const filePath = `profile-images/${fileName}`;
 
+      console.log('Uploading to path:', filePath);
+
+      // Upload to Supabase Storage
       const { error } = await supabase.storage
         .from('profiles')
         .upload(filePath, selectedFile, {
@@ -207,6 +107,7 @@ export default function CreateProfile() {
         throw new Error(`Upload failed: ${error.message}`);
       }
 
+      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('profiles')
         .getPublicUrl(filePath);
@@ -229,144 +130,97 @@ export default function CreateProfile() {
     else if (activeTab === "contact") setActiveTab("personal");
   };
 
+  // Simple handleSubmit function
   const handleSubmit = async () => {
     try {
-      console.log('=== STARTING FORM SUBMISSION ===');
+      console.log('Starting form submission...');
       setUploading(true);
 
-      // Get fresh user data
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError) {
-        console.error("❌ User fetch error:", userError);
-        alert("Authentication error. Please try logging in again.");
-        navigate('/login');
+      // Get the logged-in user
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        console.error("User fetch error:", userError);
+        alert("You must be logged in to create a profile.");
         return;
       }
 
-      if (!user) {
-        console.error("❌ No user found");
-        alert("No authenticated user found. Please login again.");
-        navigate('/login');
-        return;
-      }
-
-      const currentUser = user;
-      console.log('✅ User authenticated:', currentUser.id);
+      console.log('User authenticated:', user.id);
 
       // Handle image upload
       let profileImageUrl: string | null = formData.logo_url.trim() || null;
 
+      // If user uploaded a file, upload it first
       if (uploadMode === "upload" && selectedFile) {
-        console.log('📤 Uploading image...');
+        console.log('Upload mode: file upload');
         try {
-          const uploadedUrl = await uploadProfileImage(currentUser.id);
+          const uploadedUrl = await uploadProfileImage(user.id);
           if (uploadedUrl) {
             profileImageUrl = uploadedUrl;
-            console.log('✅ Image uploaded:', uploadedUrl);
+            console.log('Image uploaded successfully:', uploadedUrl);
           } else {
+            console.error('Upload returned null');
             alert("Failed to upload profile image. Please try again.");
             return;
           }
         } catch (error) {
-          console.error("❌ Upload error:", error);
-          alert(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          console.error("Upload error:", error);
+          alert(`Failed to upload profile image: ${error instanceof Error ? error.message : 'Unknown error'}`);
           return;
         }
-      }
-
-      // Prepare profile data
-      const profileData = {
-        user_id: currentUser.id,
-        name: formData.name.trim(),
-        profession: formData.profession.trim(),
-        logo_url: profileImageUrl,
-        experience: formData.experience ? parseInt(formData.experience) : null,
-        languages: formData.languages.trim() || null,
-        skills: formData.skills.trim() || null,
-        address: formData.address.trim() || null,
-        summary: formData.summary.trim() || null,
-        mobile: formData.mobile.trim() || null,
-        whatsapp: formData.whatsapp.trim() || null,
-        email: formData.email.trim() || null,
-        linkedin: formData.linkedin.trim() || null,
-        instagram: formData.instagram.trim() || null,
-        facebook: formData.facebook.trim() || null,
-        youtube: formData.youtube.trim() || null,
-        twitter: formData.twitter.trim() || null,
-        github: formData.github.trim() || null,
-        website: formData.website.trim() || null,
-        google_my_business: formData.google_my_business.trim() || null,
-      };
-
-      console.log('💾 Saving profile...');
-      
-      const { error: insertError } = await supabase
-        .from("user_profiles")
-        .insert([profileData]);
-
-      if (insertError) {
-        console.error("❌ Insert error:", insertError);
-        
-        if (insertError.code === '23505') {
-          alert("Profile already exists. Redirecting...");
-          navigate("/profile");
-          return;
-        }
-        
-        alert(`Failed to create profile: ${insertError.message}`);
-        return;
-      }
-
-      console.log('✅ Profile created successfully');
-      alert("Profile created successfully!");
-      navigate("/profile");
-
-    } catch (error) {
-      console.error("❌ Unexpected error:", error);
-      alert(`An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  // ✅ IMPROVED: Better debug function
-  const debugAuth = async () => {
-    console.log('=== COMPREHENSIVE DEBUG ===');
-    
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    console.log('Session:', session);
-    console.log('Session Error:', sessionError);
-    console.log('User:', user);  
-    console.log('User Error:', userError);
-    console.log('URL Hash:', window.location.hash);
-    console.log('Current URL:', window.location.href);
-    
-    let debugMessage = `Session: ${!!session}\n`;
-    debugMessage += `User: ${!!user}\n`;
-    debugMessage += `User ID: ${user?.id || 'None'}\n`;
-    debugMessage += `Email: ${user?.email || 'None'}\n`;
-    debugMessage += `Email confirmed: ${user?.email_confirmed_at || 'Not confirmed'}\n`;
-    debugMessage += `URL Hash: ${window.location.hash || 'None'}\n`;
-    debugMessage += `Session Error: ${sessionError?.message || 'None'}\n`;
-    debugMessage += `User Error: ${userError?.message || 'None'}`;
-    
-    alert(debugMessage);
-    
-    // Try to force refresh session
-    try {
-      const { error: refreshError } = await supabase.auth.refreshSession();
-      if (refreshError) {
-        console.log('Refresh failed:', refreshError);
+      } else if (uploadMode === "upload" && !selectedFile) {
+        // If in upload mode but no file selected, set to null
+        profileImageUrl = null;
+        console.log('Upload mode but no file selected');
       } else {
-        console.log('Session refreshed successfully');
-        setAuthLoading(false);
-        setAuthError("");
+        console.log('URL mode:', profileImageUrl);
       }
-    } catch (error) {
-      console.log('Refresh attempt failed:', error);
+
+      console.log('Saving profile to database...');
+      
+      // Insert into user_profiles with user.id
+      const { error } = await supabase.from("user_profiles").insert([
+        {
+          user_id: user.id,
+          name: formData.name,
+          profession: formData.profession,
+          logo_url: profileImageUrl,
+          experience: formData.experience ? parseInt(formData.experience) : null,
+          languages: formData.languages,
+          skills: formData.skills,
+          address: formData.address,
+          summary: formData.summary,
+          mobile: formData.mobile,
+          whatsapp: formData.whatsapp,
+          email: formData.email,
+          linkedin: formData.linkedin,
+          instagram: formData.instagram,
+          facebook: formData.facebook,
+          youtube: formData.youtube,
+          twitter: formData.twitter,
+          github: formData.github,
+          website: formData.website,
+          google_my_business: formData.google_my_business,
+        },
+      ]);
+
+      if (error) {
+        console.error("Database insert error:", error);
+        alert(`Failed to save profile: ${error.message}`);
+      } else {
+        console.log('Profile saved successfully');
+        alert("Profile created successfully!");
+        navigate("/profile");
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      alert(`An unexpected error occurred: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      console.log('Setting uploading to false');
+      setUploading(false);
     }
   };
 
@@ -377,94 +231,13 @@ export default function CreateProfile() {
        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
      }`;
 
-  // Loading state
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
-        <AfterLoginNavbar />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center bg-white rounded-2xl p-8 shadow-xl max-w-md mx-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-lg text-gray-600 mb-2">Verifying authentication...</p>
-            <p className="text-sm text-gray-500">This should only take a few seconds</p>
-            
-            <div className="mt-6 space-y-2">
-              <button
-                onClick={debugAuth}
-                className="text-sm text-blue-600 hover:underline"
-              >
-                Debug Auth State
-              </button>
-              <br />
-              <button
-                onClick={() => {
-                  console.log('🔄 Skipping auth check...');
-                  setAuthLoading(false);
-                  setAuthError("");
-                }}
-                className="text-sm text-gray-600 hover:underline"
-              >
-                Skip Auth Check & Continue
-              </button>
-              <br />
-              <button
-                onClick={() => navigate('/login')}
-                className="text-sm text-red-600 hover:underline"
-              >
-                Go Back to Login
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Error state
-  if (authError) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
-        <AfterLoginNavbar />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center bg-white rounded-2xl p-8 shadow-xl max-w-md mx-4">
-            <div className="text-red-500 text-6xl mb-4">⚠️</div>
-            <h2 className="text-xl font-bold text-gray-800 mb-2">Authentication Error</h2>
-            <p className="text-gray-600 mb-4">{authError}</p>
-            <div className="space-y-2">
-              <button
-                onClick={() => navigate('/login')}
-                className="w-full bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Go to Login
-              </button>
-              <button
-                onClick={debugAuth}
-                className="w-full text-sm text-blue-600 hover:underline"
-              >
-                Debug Auth State
-              </button>
-              <button
-                onClick={() => {
-                  setAuthError("");
-                  setAuthLoading(false);
-                }}
-                className="w-full text-sm text-gray-600 hover:underline"
-              >
-                Skip Auth Check & Continue
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
       <AfterLoginNavbar />
 
+      {/* Mobile-friendly container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-        {/* Tabs */}
+        {/* Responsive Tabs */}
         <div className="flex justify-center mt-2 sm:mt-6 space-x-1 sm:space-x-2 mb-4 sm:mb-0">
           <div className={tabClass("personal")} onClick={() => setActiveTab("personal")}>
             <FaUser className="text-sm sm:text-base" />
@@ -480,7 +253,7 @@ export default function CreateProfile() {
           </div>
         </div>
 
-        {/* Form Card */}
+        {/* Form Card - Responsive */}
         <div className="bg-white shadow-xl w-full max-w-2xl mx-auto mt-4 sm:mt-8 rounded-2xl p-4 sm:p-8 border border-gray-100">
           <h2 className="text-xl sm:text-2xl font-bold text-center mb-6 sm:mb-8 text-gray-800">
             Create Professional Profile
@@ -494,7 +267,8 @@ export default function CreateProfile() {
                 <input
                   value={formData.name}
                   onChange={(e) => handleChange("name", e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base
+                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
                   placeholder="Enter full name or business name"
                 />
               </div>
@@ -504,15 +278,17 @@ export default function CreateProfile() {
                 <input
                   value={formData.profession}
                   onChange={(e) => handleChange("profession", e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base
+                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
                   placeholder="e.g. Digital Marketing, Photography"
                 />
               </div>
 
-              {/* Profile Image Upload Section */}
+              {/* Profile Image Upload Section - Mobile Optimized */}
               <div>
                 <label className="block font-semibold text-gray-700 mb-2 sm:mb-3 text-sm sm:text-base">Profile Photo:</label>
                 
+                {/* Upload Mode Toggle - Mobile Responsive */}
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mb-4">
                   <button
                     type="button"
@@ -540,6 +316,7 @@ export default function CreateProfile() {
                   </button>
                 </div>
 
+                {/* Upload Mode - Mobile Optimized */}
                 {uploadMode === "upload" && (
                   <div className="space-y-4">
                     {!selectedFile ? (
@@ -577,11 +354,13 @@ export default function CreateProfile() {
                   </div>
                 )}
 
+                {/* URL Mode */}
                 {uploadMode === "url" && (
                   <input
                     value={formData.logo_url}
                     onChange={(e) => handleChange("logo_url", e.target.value)}
-                    className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                    className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base
+                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
                     placeholder="Enter image URL"
                   />
                 )}
@@ -592,7 +371,8 @@ export default function CreateProfile() {
                 <input
                   value={formData.experience}
                   onChange={(e) => handleChange("experience", e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base
+                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
                   placeholder="e.g. 5"
                   inputMode="numeric"
                 />
@@ -603,7 +383,8 @@ export default function CreateProfile() {
                 <input
                   value={formData.languages}
                   onChange={(e) => handleChange("languages", e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base
+                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
                   placeholder="e.g. English, Hindi"
                 />
               </div>
@@ -613,7 +394,8 @@ export default function CreateProfile() {
                 <input
                   value={formData.skills}
                   onChange={(e) => handleChange("skills", e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base
+                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
                   placeholder="e.g. Web Development, Graphic Design"
                 />
               </div>
@@ -623,7 +405,8 @@ export default function CreateProfile() {
                 <input
                   value={formData.address}
                   onChange={(e) => handleChange("address", e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base
+                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
                   placeholder="Enter your full address"
                 />
               </div>
@@ -633,7 +416,8 @@ export default function CreateProfile() {
                 <textarea
                   value={formData.summary}
                   onChange={(e) => handleChange("summary", e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm h-20 sm:h-28 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 resize-none"
+                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm h-20 sm:h-28 text-sm sm:text-base
+                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 resize-none"
                   placeholder="Brief about you, your background and goals"
                 />
               </div>
@@ -648,7 +432,8 @@ export default function CreateProfile() {
                 <input
                   value={formData.mobile}
                   onChange={(e) => handleChange("mobile", e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base
+                             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
                   placeholder="Enter contact number"
                   inputMode="tel"
                 />
@@ -659,7 +444,8 @@ export default function CreateProfile() {
                 <input
                   value={formData.whatsapp}
                   onChange={(e) => handleChange("whatsapp", e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base
+                             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
                   placeholder="Enter active WhatsApp number"
                   inputMode="tel"
                 />
@@ -670,7 +456,8 @@ export default function CreateProfile() {
                 <input
                   value={formData.email}
                   onChange={(e) => handleChange("email", e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base
+                             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
                   placeholder="Enter professional or business email"
                   inputMode="email"
                 />
@@ -696,7 +483,8 @@ export default function CreateProfile() {
                   <input
                     value={(formData as any)[field]}
                     onChange={(e) => handleChange(field, e.target.value)}
-                    className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                    className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base
+                               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
                     placeholder={`Enter ${label} link`}
                     inputMode="url"
                   />
@@ -705,7 +493,7 @@ export default function CreateProfile() {
             </div>
           )}
 
-          {/* Buttons */}
+          {/* Buttons - Mobile Responsive */}
           <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-0 mt-6 sm:mt-8">
             {activeTab !== "personal" && (
               <button
@@ -734,10 +522,10 @@ export default function CreateProfile() {
                 {uploading ? (
                   <>
                     <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white"></div>
-                    Creating Profile...
+                    Uploading...
                   </>
                 ) : (
-                  "Create Profile"
+                  "Submit"
                 )}
               </button>
             )}
