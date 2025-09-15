@@ -12,7 +12,7 @@ export default function PopularSearches() {
 
   return (
     <section className="w-full py-8 sm:py-12 bg-gray-50">
-      <div className="w-full max-w-full  px-4 sm:px-6 lg:px-8 text-center">
+      <div className="w-full max-w-full mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6">
           Popular Searches
         </h2>

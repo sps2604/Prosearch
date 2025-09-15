@@ -18,7 +18,7 @@ export default function ChoosePath() {
       desc: "Create your profile, showcase skills, and connect with recruiters & employers for freelance, part-time, or full-time opportunities.",
       btnText: "Start Now",
       btnColor: "bg-blue-600 hover:bg-blue-700",
-      icon: <Briefcase className="w-10 h-10 sm:w-12 sm:h-12 text-blue-600  mb-4" />,
+      icon: <Briefcase className="w-10 h-10 sm:w-12 sm:h-12 text-blue-600 mx-auto mb-4" />,
       route: "/professionals",
     },
     {
@@ -26,7 +26,7 @@ export default function ChoosePath() {
       desc: "Post job opportunities and find skilled professionals across multiple domains with verified profiles and quick hiring tools.",
       btnText: "Post a Job",
       btnColor: "bg-yellow-500 hover:bg-yellow-600",
-      icon: <Building2 className="w-10 h-10 sm:w-12 sm:h-12 text-yellow-500  mb-4" />,
+      icon: <Building2 className="w-10 h-10 sm:w-12 sm:h-12 text-yellow-500 mx-auto mb-4" />,
       route: "/post-job",
     },
     {
@@ -34,14 +34,14 @@ export default function ChoosePath() {
       desc: "Search and explore professionals across different fields for services, projects, or collaborations with ease.",
       btnText: "Start Now",
       btnColor: "bg-green-600 hover:bg-green-700",
-      icon: <Users className="w-10 h-10 sm:w-12 sm:h-12 text-green-600  mb-4" />,
+      icon: <Users className="w-10 h-10 sm:w-12 sm:h-12 text-green-600 mx-auto mb-4" />,
       route: "/general-users",
     },
   ];
 
   return (
     <section className="w-full py-12 sm:py-16 bg-white">
-      <div className="w-full max-w-full  px-4 sm:px-6 lg:px-8 text-center">
+      <div className="w-full max-w-full mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-8 sm:mb-10">
           Choose Your Path
         </h2>
