@@ -5,20 +5,18 @@ import ChoosePath from "../components/choosepath";
 import Domains from "../components/domain";
 import FeaturedProfiles from "../components/featured_profile";
 import Navbar from "../components/BeforeLoginNavbar";
-import Footer from "../components/footer";   // ✅ Import Footer
+import Footer from "../components/footer";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 
 export default function Home() {
   const navigate = useNavigate();
-  const { profile } = useUser(); // check if user is logged in
+  const { profile } = useUser();
 
   const handlePostJob = () => {
     if (!profile) {
-      // If not logged in, redirect to login page
-      navigate("/");
+      navigate("/login");
     } else {
-      // If logged in, go to Post Job page
       navigate("/post-job");
     }
   };
@@ -26,24 +24,25 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Navbar />
-      <Hero />
-      <Stats />
-      <PopularSearches />
-      <ChoosePath />
-      <Domains />
-      <FeaturedProfiles />
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex-1">
+        <Hero />
+        <Stats />
+        <PopularSearches />
+        <ChoosePath />
+        <Domains />
+        <FeaturedProfiles />
 
-      {/* Add Post Job Button */}
-      <div className="flex justify-center mt-6">
-        <button
-          onClick={handlePostJob}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          Post a Job
-        </button>
-      </div>
-
-      <Footer />   {/* ✅ Added Footer */}
+        {/* Post Job CTA */}
+        <div className="flex justify-center mt-6">
+          <button
+            onClick={handlePostJob}
+            className="w-full max-w-xs sm:max-w-none sm:w-auto px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Post a Job
+          </button>
+        </div>
+      </main>
+      <Footer />
     </div>
   );
 }

@@ -12,7 +12,7 @@ import toast, { Toaster } from "react-hot-toast";
 
 export default function Home2() {
   const [loading, setLoading] = useState(true);
-  const [ , setUserEmail] = useState<string | null>(null);
+  const [, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
     const saveProfile = async () => {
@@ -28,12 +28,11 @@ export default function Home2() {
 
       setUserEmail(user.email ?? null);
 
-      // Check if profile already exists
       const { data: existing } = await supabase
         .from("profiles")
         .select("id")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
       if (!existing) {
         const fullName = user.user_metadata?.full_name || "";
@@ -50,13 +49,11 @@ export default function Home2() {
         ]);
       }
 
-      // Toast only when coming right after login/register
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get("justLoggedIn") === "true") {
         toast.success(`🎉 You logged in successfully, ${user.email}!`, {
           duration: 4000,
         });
-        // Remove query param to avoid duplicate toast on refresh
         window.history.replaceState(null, "", "/home2");
       }
 
@@ -78,12 +75,14 @@ export default function Home2() {
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Toaster position="top-center" reverseOrder={false} />
       <AfterLoginNavbar />
-      <Hero />
-      <Stats />
-      <PopularSearches />
-      <ChoosePath />
-      <Domains />
-      <FeaturedProfiles />
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex-1">
+        <Hero />
+        <Stats />
+        <PopularSearches />
+        <ChoosePath />
+        <Domains />
+        <FeaturedProfiles />
+      </main>
       <Footer />
     </div>
   );
