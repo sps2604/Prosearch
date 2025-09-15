@@ -1,6 +1,9 @@
 @import "tailwindcss";
 /* src/index.css */
 @import "tailwindcss";
+@media (min-width: 640px) { .sm\:block { display: block; } }
+@media (min-width: 768px) { .md\:flex { display: flex; } }
+@media (min-width: 1024px) { .lg\:grid { display: grid; } }
 
 /* Optional: customize your design tokens in v4 */
 @theme {
