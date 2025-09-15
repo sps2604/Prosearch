@@ -39,91 +39,106 @@ export default function CreateProfile() {
     google_my_business: "",
   });
 
-  // ✅ FIXED: Better session verification with timeout
+  // ✅ SIMPLIFIED: Better session verification without timeout issues
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    
     const verifySession = async () => {
       try {
-        console.log('=== VERIFYING SESSION ===');
+        console.log('=== CHECKING AUTH STATE ===');
         
-        // Set timeout to prevent infinite loading
-        timeoutId = setTimeout(() => {
-          console.log('❌ Session verification timeout');
-          setAuthError("Session verification timeout. Please try logging in again.");
-          setAuthLoading(false);
-        }, 10000); // 10 second timeout
-
-        // Check current session
+        // Simple session check without complex verification
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        console.log('Session check:', { 
-          hasSession: !!session, 
-          userId: session?.user?.id,
-          error: sessionError?.message 
-        });
         
         if (sessionError) {
           console.error('Session error:', sessionError);
-          clearTimeout(timeoutId);
           setAuthError("Authentication error. Please login again.");
           setAuthLoading(false);
-          setTimeout(() => navigate('/login'), 2000);
           return;
         }
 
-        if (!session) {
-          console.log('No session found');
-          clearTimeout(timeoutId);
-          setAuthError("No active session. Redirecting to login...");
+        if (session && session.user) {
+          console.log('✅ Session found:', session.user.id);
+          
+          // Check if user already has a profile
+          try {
+            const { data: existingProfile } = await supabase
+              .from('user_profiles')
+              .select('id')
+              .eq('user_id', session.user.id)
+              .single();
+
+            if (existingProfile) {
+              console.log('User already has profile, redirecting...');
+              navigate('/profile');
+              return;
+            }
+          } catch (profileError) {
+            console.log('No existing profile found, continuing...');
+          }
+
+          console.log('✅ Ready to create profile');
           setAuthLoading(false);
-          setTimeout(() => navigate('/login'), 2000);
           return;
         }
 
-        // Check if user already has a profile
-        const { data: existingProfile } = await supabase
-          .from('user_profiles')
-          .select('id')
-          .eq('user_id', session.user.id)
-          .single();
-
-        if (existingProfile) {
-          console.log('User already has profile, redirecting...');
-          clearTimeout(timeoutId);
-          navigate('/profile');
+        // If no session, check if we're in the middle of email confirmation
+        const urlHash = window.location.hash;
+        if (urlHash.includes('access_token') || urlHash.includes('refresh_token')) {
+          console.log('🔗 Email confirmation detected, waiting for auth...');
+          // Don't set error, just wait for auth state change
           return;
         }
 
-        console.log('✅ Session verified successfully');
-        clearTimeout(timeoutId);
+        console.log('❌ No session and no confirmation tokens');
+        setAuthError("No active session. Please login again.");
         setAuthLoading(false);
 
       } catch (error) {
-        console.error('Session verification error:', error);
-        clearTimeout(timeoutId);
-        setAuthError("Unexpected authentication error.");
+        console.error('Auth verification error:', error);
+        setAuthError("Authentication check failed. Please try again.");
         setAuthLoading(false);
       }
     };
 
     verifySession();
-
-    // Cleanup timeout on unmount
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
   }, [navigate]);
 
-  // ✅ SIMPLIFIED: Auth state change handler
+  // ✅ IMPROVED: Auth state change handler for email confirmation
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('Auth state change:', event, !!session);
+      async (event, session) => {
+        console.log('🔄 Auth state change:', event, !!session);
         
-        if (event === 'SIGNED_IN' && session && authLoading) {
-          console.log('✅ User signed in via auth state change');
+        if (event === 'SIGNED_IN' && session) {
+          console.log('✅ User signed in successfully');
+          
+          // Check if user already has a profile
+          try {
+            const { data: existingProfile } = await supabase
+              .from('user_profiles')
+              .select('id')
+              .eq('user_id', session.user.id)
+              .single();
+
+            if (existingProfile) {
+              console.log('User already has profile, redirecting...');
+              navigate('/profile');
+              return;
+            }
+          } catch (profileError) {
+            console.log('No existing profile found, ready to create...');
+          }
+          
+          setAuthLoading(false);
+          setAuthError("");
+        }
+        
+        if (event === 'SIGNED_OUT') {
+          console.log('❌ User signed out');
+          navigate('/login');
+        }
+
+        if (event === 'TOKEN_REFRESHED') {
+          console.log('🔄 Token refreshed');
           setAuthLoading(false);
           setAuthError("");
         }
@@ -131,7 +146,7 @@ export default function CreateProfile() {
     );
 
     return () => subscription.unsubscribe();
-  }, [authLoading]);
+  }, [navigate]);
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -214,7 +229,6 @@ export default function CreateProfile() {
     else if (activeTab === "contact") setActiveTab("personal");
   };
 
-  // ✅ FIXED: Proper null handling for currentUser
   const handleSubmit = async () => {
     try {
       console.log('=== STARTING FORM SUBMISSION ===');
@@ -230,7 +244,6 @@ export default function CreateProfile() {
         return;
       }
 
-      // ✅ FIXED: Explicit null check
       if (!user) {
         console.error("❌ No user found");
         alert("No authenticated user found. Please login again.");
@@ -238,7 +251,6 @@ export default function CreateProfile() {
         return;
       }
 
-      // Now TypeScript knows user is not null
       const currentUser = user;
       console.log('✅ User authenticated:', currentUser.id);
 
@@ -318,18 +330,44 @@ export default function CreateProfile() {
     }
   };
 
-  // ✅ ADD: Debug button for testing (remove in production)
+  // ✅ IMPROVED: Better debug function
   const debugAuth = async () => {
-    console.log('=== DEBUG AUTH ===');
-    const { data: { session } } = await supabase.auth.getSession();
-    const { data: { user } } = await supabase.auth.getUser();
+    console.log('=== COMPREHENSIVE DEBUG ===');
+    
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
     
     console.log('Session:', session);
-    console.log('User:', user);
-    console.log('User ID:', user?.id);
-    console.log('Email confirmed:', user?.email_confirmed_at);
+    console.log('Session Error:', sessionError);
+    console.log('User:', user);  
+    console.log('User Error:', userError);
+    console.log('URL Hash:', window.location.hash);
+    console.log('Current URL:', window.location.href);
     
-    alert(`Debug - Session: ${!!session}, User: ${!!user}, ID: ${user?.id}`);
+    let debugMessage = `Session: ${!!session}\n`;
+    debugMessage += `User: ${!!user}\n`;
+    debugMessage += `User ID: ${user?.id || 'None'}\n`;
+    debugMessage += `Email: ${user?.email || 'None'}\n`;
+    debugMessage += `Email confirmed: ${user?.email_confirmed_at || 'Not confirmed'}\n`;
+    debugMessage += `URL Hash: ${window.location.hash || 'None'}\n`;
+    debugMessage += `Session Error: ${sessionError?.message || 'None'}\n`;
+    debugMessage += `User Error: ${userError?.message || 'None'}`;
+    
+    alert(debugMessage);
+    
+    // Try to force refresh session
+    try {
+      const { error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError) {
+        console.log('Refresh failed:', refreshError);
+      } else {
+        console.log('Session refreshed successfully');
+        setAuthLoading(false);
+        setAuthError("");
+      }
+    } catch (error) {
+      console.log('Refresh attempt failed:', error);
+    }
   };
 
   const tabClass = (tab: Tab) =>
@@ -339,7 +377,7 @@ export default function CreateProfile() {
        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
      }`;
 
-  // Loading state with timeout message
+  // Loading state
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
@@ -350,7 +388,6 @@ export default function CreateProfile() {
             <p className="text-lg text-gray-600 mb-2">Verifying authentication...</p>
             <p className="text-sm text-gray-500">This should only take a few seconds</p>
             
-            {/* ✅ ADD: Debug button and force continue option */}
             <div className="mt-6 space-y-2">
               <button
                 onClick={debugAuth}
@@ -361,12 +398,20 @@ export default function CreateProfile() {
               <br />
               <button
                 onClick={() => {
+                  console.log('🔄 Skipping auth check...');
                   setAuthLoading(false);
                   setAuthError("");
                 }}
                 className="text-sm text-gray-600 hover:underline"
               >
-                Force Continue (Skip Verification)
+                Skip Auth Check & Continue
+              </button>
+              <br />
+              <button
+                onClick={() => navigate('/login')}
+                className="text-sm text-red-600 hover:underline"
+              >
+                Go Back to Login
               </button>
             </div>
           </div>
@@ -397,6 +442,15 @@ export default function CreateProfile() {
                 className="w-full text-sm text-blue-600 hover:underline"
               >
                 Debug Auth State
+              </button>
+              <button
+                onClick={() => {
+                  setAuthError("");
+                  setAuthLoading(false);
+                }}
+                className="w-full text-sm text-gray-600 hover:underline"
+              >
+                Skip Auth Check & Continue
               </button>
             </div>
           </div>
