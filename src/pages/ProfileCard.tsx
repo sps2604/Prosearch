@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import AfterLoginNavbar from "../components/AfterLoginNavbar";
-import { Download, ArrowLeft, Share2, Phone, Mail, MapPin, Globe, Linkedin, Edit } from "lucide-react";
+import { Download, ArrowLeft, Share2, Phone, Mail, MapPin, Globe, Linkedin, MoreVertical } from "lucide-react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 
@@ -33,6 +33,7 @@ export default function ProfileCard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [showActions, setShowActions] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -77,21 +78,27 @@ export default function ProfileCard() {
   const handleDownload = async (format: "pdf" | "png") => {
     if (!cardRef.current || !userProfile) return;
     setDownloading(true);
+    
     try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       const canvas = await html2canvas(cardRef.current, {
         scale: 2,
         backgroundColor: "#ffffff",
         useCORS: true,
         allowTaint: true,
-        height: cardRef.current.scrollHeight,
-        width: cardRef.current.scrollWidth,
+        logging: false,
+        width: cardRef.current.offsetWidth,
+        height: cardRef.current.offsetHeight,
       });
 
       if (format === "png") {
         const link = document.createElement("a");
-        link.download = `${userProfile.name}-profile-card.png`;
-        link.href = canvas.toDataURL();
+        link.download = `${userProfile.name.replace(/\s+/g, '_')}-profile-card.png`;
+        link.href = canvas.toDataURL('image/png');
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
       } else {
         const imgData = canvas.toDataURL("image/png");
         const pdf = new jsPDF({
@@ -100,35 +107,47 @@ export default function ProfileCard() {
           format: [canvas.width / 2, canvas.height / 2],
         });
         pdf.addImage(imgData, "PNG", 0, 0, canvas.width / 2, canvas.height / 2);
-        pdf.save(`${userProfile.name}-profile-card.pdf`);
+        pdf.save(`${userProfile.name.replace(/\s+/g, '_')}-profile-card.pdf`);
       }
     } catch (error) {
       console.error("Download failed:", error);
-      alert("Download failed. Please try again.");
+      alert("Download failed: " + (error as Error).message);
     } finally {
       setDownloading(false);
     }
   };
 
   const handleShare = async () => {
-    const profileUrl = `${window.location.origin}/public-profile/${userProfile?.name}`;
+    const profileUrl = `${window.location.origin}/profile-card`;
+    
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `${userProfile?.name}'s Profile`,
-          text: `Check out ${userProfile?.name}'s professional profile`,
+          title: `${userProfile?.name}'s Professional Profile`,
+          text: `Check out ${userProfile?.name}'s profile - ${userProfile?.profession}`,
           url: profileUrl,
         });
+        return;
       } catch (error) {
-        console.log("Share failed:", error);
+        console.log("Share failed, using fallback:", error);
       }
-    } else {
-      try {
-        await navigator.clipboard.writeText(profileUrl);
-        alert("Profile link copied to clipboard!");
-      } catch (error) {
-        console.error("Failed to copy link:", error);
-      }
+    }
+    
+    const shareText = `🔗 ${userProfile?.name}'s Profile\n\n${userProfile?.profession}\n\nView profile: ${profileUrl}`;
+    
+    try {
+      await navigator.clipboard.writeText(shareText);
+      alert("✅ Profile details copied to clipboard!");
+    } catch (error) {
+      const textArea = document.createElement('textarea');
+      textArea.value = shareText;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      alert("✅ Profile details copied to clipboard!");
     }
   };
 
@@ -158,8 +177,9 @@ export default function ProfileCard() {
       <AfterLoginNavbar />
 
       <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-        {/* Header with actions */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+        
+        {/* ✅ DESKTOP VIEW: Original Large Buttons (hidden on mobile) */}
+        <div className="hidden sm:flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
           <button
             onClick={() => navigate("/profile")}
             className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 sm:py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
@@ -171,7 +191,8 @@ export default function ProfileCard() {
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <button
               onClick={handleShare}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 sm:py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 sm:py-2 text-white rounded-lg transition-colors"
+              style={{ backgroundColor: '#9333ea' }}
             >
               <Share2 size={16} />
               Share
@@ -179,7 +200,8 @@ export default function ProfileCard() {
             <button
               onClick={() => handleDownload("png")}
               disabled={downloading}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 sm:py-2 text-white rounded-lg transition-colors disabled:opacity-50"
+              style={{ backgroundColor: '#2563eb' }}
             >
               <Download size={16} />
               {downloading ? "Downloading..." : "PNG"}
@@ -187,7 +209,8 @@ export default function ProfileCard() {
             <button
               onClick={() => handleDownload("pdf")}
               disabled={downloading}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 sm:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 sm:py-2 text-white rounded-lg transition-colors disabled:opacity-50"
+              style={{ backgroundColor: '#059669' }}
             >
               <Download size={16} />
               {downloading ? "Downloading..." : "PDF"}
@@ -195,34 +218,100 @@ export default function ProfileCard() {
           </div>
         </div>
 
-        {/* Modern Business Card Profile */}
+        {/* ✅ MOBILE VIEW: Modern Compact Header (only visible on mobile) */}
+        <div className="flex sm:hidden items-center justify-between mb-6">
+          {/* Back Button */}
+          <button
+            onClick={() => navigate("/profile")}
+            className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <ArrowLeft size={20} />
+          </button>
+
+          {/* Mobile Dropdown Menu */}
+          <div className="relative">
+            <button
+              onClick={() => setShowActions(!showActions)}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <MoreVertical size={20} />
+            </button>
+            
+            {/* Dropdown Menu */}
+            {showActions && (
+              <div 
+                className="absolute right-0 top-12 w-48 rounded-lg shadow-lg border overflow-hidden z-10"
+                style={{ backgroundColor: '#ffffff' }}
+              >
+                <button
+                  onClick={() => {
+                    handleShare();
+                    setShowActions(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <Share2 size={16} />
+                  <span>Share Profile</span>
+                </button>
+                <button
+                  onClick={() => {
+                    handleDownload("png");
+                    setShowActions(false);
+                  }}
+                  disabled={downloading}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  <Download size={16} />
+                  <span>Download PNG</span>
+                </button>
+                <button
+                  onClick={() => {
+                    handleDownload("pdf");
+                    setShowActions(false);
+                  }}
+                  disabled={downloading}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  <Download size={16} />
+                  <span>Download PDF</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Profile Card */}
         <div
           ref={cardRef}
-          className="w-full max-w-md mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden"
+          className="w-full max-w-md mx-auto rounded-2xl shadow-2xl overflow-hidden"
+          style={{ backgroundColor: '#ffffff' }}
         >
-          {/* Header Section with Gradient */}
-          <div className="relative bg-gradient-to-br from-cyan-400 via-blue-500 to-blue-600 px-6 py-8 text-white">
-            {/* Edit and Logout buttons (top right) */}
-            <div className="absolute top-4 right-4 flex gap-2">
-              <button className="bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-2 transition-colors">
-                <Edit size={16} className="text-white" />
-              </button>
-              <button className="bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full px-3 py-1 text-sm transition-colors">
-                Logout
-              </button>
-            </div>
-
+          {/* ✅ CLEAN HEADER WITH NO EDIT/LOGOUT BUTTONS */}
+          <div 
+            className="relative px-6 py-8 text-white"
+            style={{
+              background: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #1d4ed8 100%)'
+            }}
+          >
             {/* Profile Image */}
             <div className="flex justify-center mb-4">
               {userProfile.logo_url ? (
                 <img
                   src={userProfile.logo_url}
                   alt="Profile"
-                  className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
+                  className="w-24 h-24 rounded-full object-cover border-4 shadow-lg"
+                  style={{ borderColor: '#ffffff' }}
                   crossOrigin="anonymous"
+                  loading="eager"
                 />
               ) : (
-                <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center border-4 border-white shadow-lg">
+                <div 
+                  className="w-24 h-24 rounded-full flex items-center justify-center border-4 shadow-lg"
+                  style={{ 
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    borderColor: '#ffffff' 
+                  }}
+                >
                   <span className="text-white text-2xl font-bold">
                     {userProfile.name?.charAt(0)?.toUpperCase() || "?"}
                   </span>
@@ -237,11 +326,13 @@ export default function ProfileCard() {
           </div>
 
           {/* White Content Section */}
-          <div className="px-6 py-6 bg-white">
+          <div className="px-6 py-6" style={{ backgroundColor: '#ffffff' }}>
             {/* Professional Summary */}
             <div className="mb-6">
-              <h2 className="text-lg font-semibold text-blue-600 mb-3">Professional Summary</h2>
-              <p className="text-gray-700 text-sm leading-relaxed">
+              <h2 className="text-lg font-semibold mb-3" style={{ color: '#2563eb' }}>
+                Professional Summary
+              </h2>
+              <p className="text-sm leading-relaxed" style={{ color: '#374151' }}>
                 {userProfile.summary || `${userProfile.profession} with ${userProfile.experience} years of experience. Skilled professional ready to deliver exceptional results.`}
               </p>
             </div>
@@ -249,36 +340,48 @@ export default function ProfileCard() {
             {/* Contact Information */}
             <div className="space-y-3">
               {userProfile.mobile && (
-                <div className="flex items-center gap-3 text-gray-700">
-                  <div className="bg-blue-100 p-2 rounded-full">
-                    <Phone size={16} className="text-blue-600" />
+                <div className="flex items-center gap-3" style={{ color: '#374151' }}>
+                  <div 
+                    className="p-2 rounded-full"
+                    style={{ backgroundColor: '#dbeafe' }}
+                  >
+                    <Phone size={16} style={{ color: '#2563eb' }} />
                   </div>
                   <span className="text-sm">{userProfile.mobile}</span>
                 </div>
               )}
 
               {userProfile.whatsapp && (
-                <div className="flex items-center gap-3 text-gray-700">
-                  <div className="bg-green-100 p-2 rounded-full">
-                    <Phone size={16} className="text-green-600" />
+                <div className="flex items-center gap-3" style={{ color: '#374151' }}>
+                  <div 
+                    className="p-2 rounded-full"
+                    style={{ backgroundColor: '#dcfce7' }}
+                  >
+                    <Phone size={16} style={{ color: '#059669' }} />
                   </div>
                   <span className="text-sm">{userProfile.whatsapp}</span>
                 </div>
               )}
 
               {userProfile.email && (
-                <div className="flex items-center gap-3 text-gray-700">
-                  <div className="bg-red-100 p-2 rounded-full">
-                    <Mail size={16} className="text-red-600" />
+                <div className="flex items-center gap-3" style={{ color: '#374151' }}>
+                  <div 
+                    className="p-2 rounded-full"
+                    style={{ backgroundColor: '#fee2e2' }}
+                  >
+                    <Mail size={16} style={{ color: '#dc2626' }} />
                   </div>
                   <span className="text-sm">{userProfile.email}</span>
                 </div>
               )}
 
               {userProfile.address && (
-                <div className="flex items-center gap-3 text-gray-700">
-                  <div className="bg-green-100 p-2 rounded-full">
-                    <MapPin size={16} className="text-green-600" />
+                <div className="flex items-center gap-3" style={{ color: '#374151' }}>
+                  <div 
+                    className="p-2 rounded-full"
+                    style={{ backgroundColor: '#dcfce7' }}
+                  >
+                    <MapPin size={16} style={{ color: '#059669' }} />
                   </div>
                   <span className="text-sm">{userProfile.address}</span>
                 </div>
@@ -286,10 +389,10 @@ export default function ProfileCard() {
             </div>
 
             {/* Social Media Links */}
-            <div className="mt-6 pt-4 border-t border-gray-100">
+            <div className="mt-6 pt-4" style={{ borderTop: '1px solid #f3f4f6' }}>
               <div className="flex justify-between items-center">
-                <h3 className="text-sm font-semibold text-gray-800">Social Media</h3>
-                <h3 className="text-sm font-semibold text-gray-800">Share This Profile</h3>
+                <h3 className="text-sm font-semibold" style={{ color: '#1f2937' }}>Social Media</h3>
+                <h3 className="text-sm font-semibold" style={{ color: '#1f2937' }}>Share This Profile</h3>
               </div>
               
               <div className="flex justify-between items-center mt-2">
@@ -300,7 +403,8 @@ export default function ProfileCard() {
                       href={userProfile.linkedin}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors"
+                      className="text-white p-2 rounded-full transition-colors"
+                      style={{ backgroundColor: '#2563eb' }}
                     >
                       <Linkedin size={16} />
                     </a>
@@ -310,7 +414,8 @@ export default function ProfileCard() {
                       href={userProfile.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="bg-gray-600 text-white p-2 rounded-full hover:bg-gray-700 transition-colors"
+                      className="text-white p-2 rounded-full transition-colors"
+                      style={{ backgroundColor: '#4b5563' }}
                     >
                       <Globe size={16} />
                     </a>
@@ -321,14 +426,21 @@ export default function ProfileCard() {
                 <div className="flex gap-2">
                   <button
                     onClick={handleShare}
-                    className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 transition-colors"
+                    className="text-white p-2 rounded-full transition-colors"
+                    style={{ backgroundColor: '#3b82f6' }}
                   >
                     <Share2 size={16} />
                   </button>
-                  <button className="bg-green-500 text-white p-2 rounded-full hover:bg-green-600 transition-colors">
+                  <button 
+                    className="text-white p-2 rounded-full transition-colors"
+                    style={{ backgroundColor: '#059669' }}
+                  >
                     <Phone size={16} />
                   </button>
-                  <button className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors">
+                  <button 
+                    className="text-white p-2 rounded-full transition-colors"
+                    style={{ backgroundColor: '#2563eb' }}
+                  >
                     <Linkedin size={16} />
                   </button>
                 </div>
@@ -336,12 +448,20 @@ export default function ProfileCard() {
             </div>
 
             {/* Footer */}
-            <div className="mt-4 pt-4 border-t border-gray-100 text-center">
-              <p className="text-xs text-gray-500">Powered by Softcadd</p>
+            <div className="mt-4 pt-4 text-center" style={{ borderTop: '1px solid #f3f4f6' }}>
+              <p className="text-xs" style={{ color: '#9ca3af' }}>Powered by Softcadd</p>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Mobile: Close dropdown when clicking outside */}
+      {showActions && (
+        <div 
+          className="fixed inset-0 z-0 sm:hidden" 
+          onClick={() => setShowActions(false)}
+        />
+      )}
     </>
   );
 }
