@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import AfterLoginNavbar from "../components/AfterLoginNavbar";
-import { Download, ArrowLeft, Share2 } from "lucide-react";
+import { Download, ArrowLeft, Share2, Phone, Mail, MapPin, Globe, Linkedin, Edit } from "lucide-react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 
@@ -195,117 +195,149 @@ export default function ProfileCard() {
           </div>
         </div>
 
-        {/* Profile Card */}
+        {/* Modern Business Card Profile */}
         <div
           ref={cardRef}
-          className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-2xl max-w-2xl mx-auto"
-          style={{ minHeight: "28rem" }}
+          className="w-full max-w-md mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden"
         >
-          {/* Header Section */}
-          <div className="text-center mb-6 sm:mb-8">
-            <div className="relative inline-block mb-4">
+          {/* Header Section with Gradient */}
+          <div className="relative bg-gradient-to-br from-cyan-400 via-blue-500 to-blue-600 px-6 py-8 text-white">
+            {/* Edit and Logout buttons (top right) */}
+            <div className="absolute top-4 right-4 flex gap-2">
+              <button className="bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-2 transition-colors">
+                <Edit size={16} className="text-white" />
+              </button>
+              <button className="bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full px-3 py-1 text-sm transition-colors">
+                Logout
+              </button>
+            </div>
+
+            {/* Profile Image */}
+            <div className="flex justify-center mb-4">
               {userProfile.logo_url ? (
                 <img
                   src={userProfile.logo_url}
                   alt="Profile"
-                  className="w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-full object-cover border-4 border-white shadow-lg mx-auto"
+                  className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
                   crossOrigin="anonymous"
                 />
               ) : (
-                <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center border-4 border-white shadow-lg mx-auto">
-                  <span className="text-white text-3xl sm:text-4xl font-bold">
+                <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center border-4 border-white shadow-lg">
+                  <span className="text-white text-2xl font-bold">
                     {userProfile.name?.charAt(0)?.toUpperCase() || "?"}
                   </span>
                 </div>
               )}
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-1 sm:mb-2">
+            {/* Name */}
+            <h1 className="text-2xl font-bold text-center text-white mb-1">
               {userProfile.name}
             </h1>
-            <p className="text-base sm:text-xl text-gray-600 mb-2">
-              {userProfile.profession}
-            </p>
-            <div className="inline-block bg-white rounded-full px-3 sm:px-4 py-1 shadow-sm">
-              <span className="text-xs sm:text-sm font-medium text-gray-700">
-                {userProfile.experience} years experience
-              </span>
-            </div>
           </div>
 
-          {/* Contact Information */}
-          <div className="bg-white rounded-2xl p-4 sm:p-6 mb-6 shadow-sm">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-800 mb-3 sm:mb-4 text-center">
-              Contact Information
-            </h2>
-            <div className="space-y-2 sm:space-y-3">
-              {userProfile.mobile && (
-                <div className="flex items-center justify-center gap-2 text-gray-700">
-                  <span className="text-blue-500">📞</span>
-                  <span className="font-medium">{userProfile.mobile}</span>
-                </div>
-              )}
-              {userProfile.email && (
-                <div className="flex items-center justify-center gap-2 text-gray-700">
-                  <span className="text-red-500">📧</span>
-                  <span className="font-medium">{userProfile.email}</span>
-                </div>
-              )}
-              {userProfile.address && (
-                <div className="flex items-center justify-center gap-2 text-gray-700">
-                  <span className="text-green-500">📍</span>
-                  <span className="font-medium text-center">{userProfile.address}</span>
-                </div>
-              )}
-              {userProfile.website && (
-                <div className="flex items-center justify-center gap-2 text-gray-700">
-                  <span className="text-purple-500">🌐</span>
-                  <span className="font-medium break-words">{userProfile.website}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Skills */}
-          {userProfile.skills && (
-            <div className="bg-white rounded-2xl p-4 sm:p-6 mb-6 shadow-sm">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-800 mb-3 sm:mb-4 text-center">
-                Core Skills
-              </h2>
-              <div className="flex flex-wrap gap-2 justify-center">
-                {userProfile.skills
-                  .split(",")
-                  .slice(0, 8)
-                  .map((skill, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full text-xs sm:text-sm font-medium"
-                    >
-                      {skill.trim()}
-                    </span>
-                  ))}
-              </div>
-            </div>
-          )}
-
-          {/* Summary */}
-          {userProfile.summary && (
-            <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-800 mb-3 sm:mb-4 text-center">
-                About Me
-              </h2>
-              <p className="text-gray-700 leading-relaxed text-center text-sm sm:text-base">
-                {userProfile.summary.length > 200
-                  ? userProfile.summary.substring(0, 200) + "..."
-                  : userProfile.summary}
+          {/* White Content Section */}
+          <div className="px-6 py-6 bg-white">
+            {/* Professional Summary */}
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-blue-600 mb-3">Professional Summary</h2>
+              <p className="text-gray-700 text-sm leading-relaxed">
+                {userProfile.summary || `${userProfile.profession} with ${userProfile.experience} years of experience. Skilled professional ready to deliver exceptional results.`}
               </p>
             </div>
-          )}
 
-          {/* Footer */}
-          <div className="mt-6 sm:mt-8 text-center">
-            <div className="inline-block bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-full text-xs sm:text-sm font-medium">
-              Professional Profile Card
+            {/* Contact Information */}
+            <div className="space-y-3">
+              {userProfile.mobile && (
+                <div className="flex items-center gap-3 text-gray-700">
+                  <div className="bg-blue-100 p-2 rounded-full">
+                    <Phone size={16} className="text-blue-600" />
+                  </div>
+                  <span className="text-sm">{userProfile.mobile}</span>
+                </div>
+              )}
+
+              {userProfile.whatsapp && (
+                <div className="flex items-center gap-3 text-gray-700">
+                  <div className="bg-green-100 p-2 rounded-full">
+                    <Phone size={16} className="text-green-600" />
+                  </div>
+                  <span className="text-sm">{userProfile.whatsapp}</span>
+                </div>
+              )}
+
+              {userProfile.email && (
+                <div className="flex items-center gap-3 text-gray-700">
+                  <div className="bg-red-100 p-2 rounded-full">
+                    <Mail size={16} className="text-red-600" />
+                  </div>
+                  <span className="text-sm">{userProfile.email}</span>
+                </div>
+              )}
+
+              {userProfile.address && (
+                <div className="flex items-center gap-3 text-gray-700">
+                  <div className="bg-green-100 p-2 rounded-full">
+                    <MapPin size={16} className="text-green-600" />
+                  </div>
+                  <span className="text-sm">{userProfile.address}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Social Media Links */}
+            <div className="mt-6 pt-4 border-t border-gray-100">
+              <div className="flex justify-between items-center">
+                <h3 className="text-sm font-semibold text-gray-800">Social Media</h3>
+                <h3 className="text-sm font-semibold text-gray-800">Share This Profile</h3>
+              </div>
+              
+              <div className="flex justify-between items-center mt-2">
+                {/* Social Media Icons */}
+                <div className="flex gap-2">
+                  {userProfile.linkedin && (
+                    <a
+                      href={userProfile.linkedin}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors"
+                    >
+                      <Linkedin size={16} />
+                    </a>
+                  )}
+                  {userProfile.website && (
+                    <a
+                      href={userProfile.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-gray-600 text-white p-2 rounded-full hover:bg-gray-700 transition-colors"
+                    >
+                      <Globe size={16} />
+                    </a>
+                  )}
+                </div>
+
+                {/* Share Icons */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleShare}
+                    className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 transition-colors"
+                  >
+                    <Share2 size={16} />
+                  </button>
+                  <button className="bg-green-500 text-white p-2 rounded-full hover:bg-green-600 transition-colors">
+                    <Phone size={16} />
+                  </button>
+                  <button className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors">
+                    <Linkedin size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="mt-4 pt-4 border-t border-gray-100 text-center">
+              <p className="text-xs text-gray-500">Powered by Softcadd</p>
             </div>
           </div>
         </div>

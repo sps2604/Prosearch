@@ -24,7 +24,7 @@ export default function ProfessionalDomains() {
 
   return (
     <section className="w-full py-12 sm:py-16 bg-gray-50">
-      <div className="w-full max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-full  px-4 sm:px-6 lg:px-8">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-8 sm:mb-10 text-center">
           Popular Professional Domains
         </h2>

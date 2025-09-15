@@ -24,7 +24,7 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Navbar />
-      <main className="w-full max-w-full mx-auto px-4 sm:px-6 lg:px-8 flex-1">
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex-1">
         <Hero />
         <Stats />
         <PopularSearches />

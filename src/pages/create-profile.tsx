@@ -229,297 +229,311 @@ export default function CreateProfile() {
   };
 
   const tabClass = (tab: Tab) =>
-    `flex items-center gap-2 px-6 py-2 rounded-t-xl cursor-pointer transition-all font-medium
-     ${activeTab === tab ? "bg-blue-600 text-white shadow-lg" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`;
+    `flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-6 py-2 sm:py-3 rounded-t-xl cursor-pointer transition-all font-medium text-xs sm:text-sm
+     ${activeTab === tab 
+       ? "bg-blue-600 text-white shadow-lg" 
+       : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+     }`;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
       <AfterLoginNavbar />
 
-      {/* Tabs */}
-      <div className="flex justify-center mt-6 space-x-2">
-        <div className={tabClass("personal")} onClick={() => setActiveTab("personal")}>
-          <FaUser /> Personal
+      {/* Mobile-friendly container */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        {/* Responsive Tabs */}
+        <div className="flex justify-center mt-2 sm:mt-6 space-x-1 sm:space-x-2 mb-4 sm:mb-0">
+          <div className={tabClass("personal")} onClick={() => setActiveTab("personal")}>
+            <FaUser className="text-sm sm:text-base" />
+            <span className="hidden xs:inline sm:inline">Personal</span>
+          </div>
+          <div className={tabClass("contact")} onClick={() => setActiveTab("contact")}>
+            <FaAddressBook className="text-sm sm:text-base" />
+            <span className="hidden xs:inline sm:inline">Contact</span>
+          </div>
+          <div className={tabClass("links")} onClick={() => setActiveTab("links")}>
+            <FaLink className="text-sm sm:text-base" />
+            <span className="hidden xs:inline sm:inline">Links</span>
+          </div>
         </div>
-        <div className={tabClass("contact")} onClick={() => setActiveTab("contact")}>
-          <FaAddressBook /> Contact
-        </div>
-        <div className={tabClass("links")} onClick={() => setActiveTab("links")}>
-          <FaLink /> Links
-        </div>
-      </div>
 
-      {/* Form Card */}
-      <div className="bg-white shadow-xl max-w-2xl mx-auto mt-8 rounded-2xl p-8 border border-gray-100">
-        <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">
-          Create Professional Profile
-        </h2>
+        {/* Form Card - Responsive */}
+        <div className="bg-white shadow-xl w-full max-w-2xl mx-auto mt-4 sm:mt-8 rounded-2xl p-4 sm:p-8 border border-gray-100">
+          <h2 className="text-xl sm:text-2xl font-bold text-center mb-6 sm:mb-8 text-gray-800">
+            Create Professional Profile
+          </h2>
 
-        {/* Personal Details */}
-        {activeTab === "personal" && (
-          <div className="space-y-5">
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">Name:</label>
-              <input
-                value={formData.name}
-                onChange={(e) => handleChange("name", e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm
-                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="Enter full name or business name"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">Profession / Services:</label>
-              <input
-                value={formData.profession}
-                onChange={(e) => handleChange("profession", e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
-                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="e.g. Digital Marketing, Photography"
-              />
-            </div>
-
-            {/* Profile Image Upload Section */}
-            <div>
-              <label className="block font-semibold text-gray-700 mb-3">Profile Photo:</label>
-              
-              {/* Upload Mode Toggle */}
-              <div className="flex gap-4 mb-4">
-                <button
-                  type="button"
-                  onClick={() => setUploadMode("upload")}
-                  className={`px-4 py-2 rounded-lg transition-colors ${
-                    uploadMode === "upload" 
-                      ? "bg-blue-500 text-white" 
-                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                  }`}
-                >
-                  <FaUpload className="inline mr-2" />
-                  Upload Photo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setUploadMode("url")}
-                  className={`px-4 py-2 rounded-lg transition-colors ${
-                    uploadMode === "url" 
-                      ? "bg-blue-500 text-white" 
-                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                  }`}
-                >
-                  <FaLink className="inline mr-2" />
-                  Use URL
-                </button>
+          {/* Personal Details */}
+          {activeTab === "personal" && (
+            <div className="space-y-4 sm:space-y-5">
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1 text-sm sm:text-base">Name:</label>
+                <input
+                  value={formData.name}
+                  onChange={(e) => handleChange("name", e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base
+                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                  placeholder="Enter full name or business name"
+                />
               </div>
 
-              {/* Upload Mode */}
-              {uploadMode === "upload" && (
-                <div className="space-y-4">
-                  {!selectedFile ? (
-                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 transition-colors">
-                      <input
-                        id="profile-image"
-                        type="file"
-                        accept="image/jpeg,image/jpg,image/png,image/webp"
-                        onChange={handleFileSelect}
-                        className="hidden"
-                      />
-                      <label htmlFor="profile-image" className="cursor-pointer">
-                        <FaUpload className="mx-auto text-4xl text-gray-400 mb-4" />
-                        <p className="text-gray-600 mb-2">Click to upload profile photo</p>
-                        <p className="text-sm text-gray-400">JPEG, PNG, WebP (Max 5MB)</p>
-                      </label>
-                    </div>
-                  ) : (
-                    <div className="relative inline-block">
-                      <img
-                        src={previewUrl}
-                        alt="Preview"
-                        className="w-32 h-32 object-cover rounded-xl border-4 border-white shadow-lg"
-                      />
-                      <button
-                        type="button"
-                        onClick={removeSelectedFile}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
-                      >
-                        <FaTimes size={12} />
-                      </button>
-                      <p className="text-sm text-gray-600 mt-2">{selectedFile.name}</p>
-                    </div>
-                  )}
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1 text-sm sm:text-base">Profession / Services:</label>
+                <input
+                  value={formData.profession}
+                  onChange={(e) => handleChange("profession", e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base
+                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                  placeholder="e.g. Digital Marketing, Photography"
+                />
+              </div>
+
+              {/* Profile Image Upload Section - Mobile Optimized */}
+              <div>
+                <label className="block font-semibold text-gray-700 mb-2 sm:mb-3 text-sm sm:text-base">Profile Photo:</label>
+                
+                {/* Upload Mode Toggle - Mobile Responsive */}
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setUploadMode("upload")}
+                    className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm flex items-center justify-center gap-2 ${
+                      uploadMode === "upload" 
+                        ? "bg-blue-500 text-white" 
+                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    }`}
+                  >
+                    <FaUpload className="text-xs sm:text-sm" />
+                    Upload Photo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUploadMode("url")}
+                    className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm flex items-center justify-center gap-2 ${
+                      uploadMode === "url" 
+                        ? "bg-blue-500 text-white" 
+                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    }`}
+                  >
+                    <FaLink className="text-xs sm:text-sm" />
+                    Use URL
+                  </button>
                 </div>
-              )}
 
-              {/* URL Mode */}
-              {uploadMode === "url" && (
+                {/* Upload Mode - Mobile Optimized */}
+                {uploadMode === "upload" && (
+                  <div className="space-y-4">
+                    {!selectedFile ? (
+                      <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 sm:p-8 text-center hover:border-blue-400 transition-colors">
+                        <input
+                          id="profile-image"
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png,image/webp"
+                          onChange={handleFileSelect}
+                          className="hidden"
+                        />
+                        <label htmlFor="profile-image" className="cursor-pointer">
+                          <FaUpload className="mx-auto text-2xl sm:text-4xl text-gray-400 mb-2 sm:mb-4" />
+                          <p className="text-gray-600 mb-1 sm:mb-2 text-sm sm:text-base">Click to upload profile photo</p>
+                          <p className="text-xs sm:text-sm text-gray-400">JPEG, PNG, WebP (Max 5MB)</p>
+                        </label>
+                      </div>
+                    ) : (
+                      <div className="relative inline-block">
+                        <img
+                          src={previewUrl}
+                          alt="Preview"
+                          className="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-xl border-4 border-white shadow-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={removeSelectedFile}
+                          className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                        >
+                          <FaTimes size={10} className="sm:text-xs" />
+                        </button>
+                        <p className="text-xs sm:text-sm text-gray-600 mt-2 max-w-32 truncate">{selectedFile.name}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* URL Mode */}
+                {uploadMode === "url" && (
+                  <input
+                    value={formData.logo_url}
+                    onChange={(e) => handleChange("logo_url", e.target.value)}
+                    className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base
+                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                    placeholder="Enter image URL"
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1 text-sm sm:text-base">Experience (Years):</label>
                 <input
-                  value={formData.logo_url}
-                  onChange={(e) => handleChange("logo_url", e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
-                     focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                  placeholder="Enter image URL"
-                />
-              )}
-            </div>
-
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">Experience (Years):</label>
-              <input
-                value={formData.experience}
-                onChange={(e) => handleChange("experience", e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
-                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="e.g. 5"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">Languages Known:</label>
-              <input
-                value={formData.languages}
-                onChange={(e) => handleChange("languages", e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
-                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="e.g. English, Hindi"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">Skills:</label>
-              <input
-                value={formData.skills}
-                onChange={(e) => handleChange("skills", e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
-                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="e.g. Web Development, Graphic Design"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">Address:</label>
-              <input
-                value={formData.address}
-                onChange={(e) => handleChange("address", e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
-                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="Enter your full address"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">Professional Summary:</label>
-              <textarea
-                value={formData.summary}
-                onChange={(e) => handleChange("summary", e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm h-28 focus:outline-none
-                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="Brief about you, your background and goals"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Contact Details */}
-        {activeTab === "contact" && (
-          <div className="space-y-5">
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">Mobile:</label>
-              <input
-                value={formData.mobile}
-                onChange={(e) => handleChange("mobile", e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
-                           focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="Enter contact number"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">WhatsApp:</label>
-              <input
-                value={formData.whatsapp}
-                onChange={(e) => handleChange("whatsapp", e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
-                           focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="Enter active WhatsApp number"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">Email:</label>
-              <input
-                value={formData.email}
-                onChange={(e) => handleChange("email", e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
-                           focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="Enter professional or business email"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Accounts & Links */}
-        {activeTab === "links" && (
-          <div className="space-y-5">
-            {[
-              ["linkedin", "LinkedIn"],
-              ["instagram", "Instagram"],
-              ["facebook", "Facebook"],
-              ["youtube", "YouTube"],
-              ["twitter", "Twitter"],
-              ["github", "GitHub"],
-              ["website", "Website / Portfolio"],
-              ["google_my_business", "Google My Business Link"],
-            ].map(([field, label], index) => (
-              <div key={index}>
-                <label className="block font-semibold text-gray-700 mb-1">{label}:</label>
-                <input
-                  value={(formData as any)[field]}
-                  onChange={(e) => handleChange(field, e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
-                             focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                  placeholder={`Enter ${label} link`}
+                  value={formData.experience}
+                  onChange={(e) => handleChange("experience", e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base
+                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                  placeholder="e.g. 5"
+                  inputMode="numeric"
                 />
               </div>
-            ))}
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1 text-sm sm:text-base">Languages Known:</label>
+                <input
+                  value={formData.languages}
+                  onChange={(e) => handleChange("languages", e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base
+                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                  placeholder="e.g. English, Hindi"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1 text-sm sm:text-base">Skills:</label>
+                <input
+                  value={formData.skills}
+                  onChange={(e) => handleChange("skills", e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base
+                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                  placeholder="e.g. Web Development, Graphic Design"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1 text-sm sm:text-base">Address:</label>
+                <input
+                  value={formData.address}
+                  onChange={(e) => handleChange("address", e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base
+                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                  placeholder="Enter your full address"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1 text-sm sm:text-base">Professional Summary:</label>
+                <textarea
+                  value={formData.summary}
+                  onChange={(e) => handleChange("summary", e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm h-20 sm:h-28 text-sm sm:text-base
+                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 resize-none"
+                  placeholder="Brief about you, your background and goals"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Contact Details */}
+          {activeTab === "contact" && (
+            <div className="space-y-4 sm:space-y-5">
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1 text-sm sm:text-base">Mobile:</label>
+                <input
+                  value={formData.mobile}
+                  onChange={(e) => handleChange("mobile", e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base
+                             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                  placeholder="Enter contact number"
+                  inputMode="tel"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1 text-sm sm:text-base">WhatsApp:</label>
+                <input
+                  value={formData.whatsapp}
+                  onChange={(e) => handleChange("whatsapp", e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base
+                             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                  placeholder="Enter active WhatsApp number"
+                  inputMode="tel"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1 text-sm sm:text-base">Email:</label>
+                <input
+                  value={formData.email}
+                  onChange={(e) => handleChange("email", e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base
+                             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                  placeholder="Enter professional or business email"
+                  inputMode="email"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Accounts & Links */}
+          {activeTab === "links" && (
+            <div className="space-y-4 sm:space-y-5">
+              {[
+                ["linkedin", "LinkedIn"],
+                ["instagram", "Instagram"],
+                ["facebook", "Facebook"],
+                ["youtube", "YouTube"],
+                ["twitter", "Twitter"],
+                ["github", "GitHub"],
+                ["website", "Website / Portfolio"],
+                ["google_my_business", "Google My Business Link"],
+              ].map(([field, label], index) => (
+                <div key={index}>
+                  <label className="block font-semibold text-gray-700 mb-1 text-sm sm:text-base">{label}:</label>
+                  <input
+                    value={(formData as any)[field]}
+                    onChange={(e) => handleChange(field, e.target.value)}
+                    className="w-full border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm sm:text-base
+                               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                    placeholder={`Enter ${label} link`}
+                    inputMode="url"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Buttons - Mobile Responsive */}
+          <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-0 mt-6 sm:mt-8">
+            {activeTab !== "personal" && (
+              <button
+                onClick={goPrevious}
+                disabled={uploading}
+                className="order-2 sm:order-1 border border-gray-400 text-gray-700 px-4 sm:px-6 py-2 sm:py-2 rounded-xl hover:bg-gray-100 transition disabled:opacity-50 text-sm sm:text-base"
+              >
+                Previous
+              </button>
+            )}
+
+            {activeTab !== "links" ? (
+              <button
+                onClick={goNext}
+                disabled={uploading}
+                className="order-1 sm:order-2 bg-blue-600 text-white px-4 sm:px-6 py-2 sm:py-2 rounded-xl shadow-md hover:bg-blue-700 transition disabled:opacity-50 text-sm sm:text-base sm:ml-auto"
+              >
+                Next
+              </button>
+            ) : (
+              <button
+                onClick={handleSubmit}
+                disabled={uploading}
+                className="order-1 sm:order-2 bg-blue-600 text-white px-4 sm:px-6 py-2 sm:py-2 rounded-xl shadow-md hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2 text-sm sm:text-base sm:ml-auto"
+              >
+                {uploading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white"></div>
+                    Uploading...
+                  </>
+                ) : (
+                  "Submit"
+                )}
+              </button>
+            )}
           </div>
-        )}
-
-        {/* Buttons */}
-        <div className="flex justify-between mt-8">
-          {activeTab !== "personal" && (
-            <button
-              onClick={goPrevious}
-              disabled={uploading}
-              className="border border-gray-400 text-gray-700 px-6 py-2 rounded-xl hover:bg-gray-100 transition disabled:opacity-50"
-            >
-              Previous
-            </button>
-          )}
-
-          {activeTab !== "links" ? (
-            <button
-              onClick={goNext}
-              disabled={uploading}
-              className="bg-blue-600 text-white px-6 py-2 rounded-xl shadow-md hover:bg-blue-700 transition ml-auto disabled:opacity-50"
-            >
-              Next
-            </button>
-          ) : (
-            <button
-              onClick={handleSubmit}
-              disabled={uploading}
-              className="bg-blue-600 text-white px-6 py-2 rounded-xl shadow-md hover:bg-blue-700 transition ml-auto disabled:opacity-50 flex items-center gap-2"
-            >
-              {uploading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Uploading...
-                </>
-              ) : (
-                "Submit"
-              )}
-            </button>
-          )}
         </div>
       </div>
     </div>
