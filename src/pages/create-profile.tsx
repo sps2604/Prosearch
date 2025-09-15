@@ -180,7 +180,7 @@ export default function CreateProfile() {
       const fileName = `${userId}-${Date.now()}.${fileExt}`;
       const filePath = `profile-images/${fileName}`;
 
-      const { data, error } = await supabase.storage
+      const {error } = await supabase.storage
         .from('profiles')
         .upload(filePath, selectedFile, {
           cacheControl: '3600',
