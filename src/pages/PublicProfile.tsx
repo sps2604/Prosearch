@@ -52,11 +52,14 @@ export default function PublicProfile() {
       }
 
       try {
-        // Fetch profile by name from user_profiles table
+        // Normalize name to be case-insensitive and trimmed
+        const raw = decodeURIComponent(name);
+        const normalizedName = raw.trim();
+        // Fetch profile by case-insensitive name match
         const { data: userProfileData, error: userProfileError } = await supabase
           .from("user_profiles")
           .select("*")
-          .eq("name", decodeURIComponent(name))
+          .ilike("name", normalizedName)
           .single();
 
         if (userProfileError) {
