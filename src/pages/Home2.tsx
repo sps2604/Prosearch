@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import AfterLoginNavbar from "../components/AfterLoginNavbar";
-import { supabase } from "../lib/supabaseClient";
 import Hero from "../components/hero";
 import Stats from "../components/stats";
 import PopularSearches from "../components/popular_searches";
@@ -9,59 +8,33 @@ import Domains from "../components/domain";
 import FeaturedProfiles from "../components/featured_profile";
 import Footer from "../components/footer";
 import toast, { Toaster } from "react-hot-toast";
+import { useUser } from "../context/UserContext"; // Import useUser
 
 export default function Home2() {
   const [loading, setLoading] = useState(true);
-  const [, setUserEmail] = useState<string | null>(null);
+  const { profile } = useUser(); // Access profile from UserContext
 
   useEffect(() => {
-    const saveProfile = async () => {
-      const {
-        data: { user },
-        error,
-      } = await supabase.auth.getUser();
+    // Only show toast if profile is available and it's a fresh login
+    const urlParams = new URLSearchParams(window.location.search);
+    if (profile && urlParams.get("justLoggedIn") === "true") {
+      const userName = profile.user_type === "business" ? profile.business_name : (profile.first_name || profile.email || "user");
+      toast.success(`🎉 You logged in successfully, ${userName}!`, {
+        duration: 4000,
+      });
+      window.history.replaceState(null, "", "/home2");
+    }
 
-      if (error || !user) {
-        setLoading(false);
-        return;
-      }
-
-      setUserEmail(user.email ?? null);
-
-      const { data: existing } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (!existing) {
-        const fullName = user.user_metadata?.full_name || "";
-        const [firstName, ...rest] = fullName.split(" ");
-        const lastName = rest.join(" ");
-
-        await supabase.from("profiles").insert([
-          {
-            id: user.id,
-            first_name: firstName || user.user_metadata?.first_name || "",
-            last_name: lastName || user.user_metadata?.last_name || "",
-            email: user.email ?? "",
-          },
-        ]);
-      }
-
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get("justLoggedIn") === "true") {
-        toast.success(`🎉 You logged in successfully, ${user.email}!`, {
-          duration: 4000,
-        });
-        window.history.replaceState(null, "", "/home2");
-      }
-
+    // After initial load, if profile exists, set loading to false
+    if (profile) {
       setLoading(false);
-    };
+    } else {
+      // If no profile and not just logged in, still show loading if needed or redirect
+      // For now, assume if profile is null, it's still loading or not logged in.
+      // This can be refined later if needed to explicitly redirect to login.
+    }
 
-    saveProfile();
-  }, []);
+  }, [profile]); // Depend on profile to trigger when user context is updated
 
   if (loading) {
     return (
@@ -75,14 +48,12 @@ export default function Home2() {
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Toaster position="top-center" reverseOrder={false} />
       <AfterLoginNavbar />
-      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex-1">
-        <Hero />
-        <Stats />
-        <PopularSearches />
-        <ChoosePath />
-        <Domains />
-        <FeaturedProfiles />
-      </main>
+      <Hero />
+      <Stats />
+      <PopularSearches />
+      <ChoosePath />
+      <Domains />
+      <FeaturedProfiles />
       <Footer />
     </div>
   );

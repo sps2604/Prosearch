@@ -8,22 +8,20 @@ import {
   Share2,
   Phone,
   Mail,
-  MapPin,
   Globe,
   Linkedin,
   MoreVertical,
 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
+import { useUser } from "../context/UserContext"; // Import useUser
 
-interface UserProfile {
-  name: string;
-  profession: string;
+interface BusinessProfileData {
+  id: string;
+  business_name: string;
+  industry: string;
   logo_url: string;
-  experience: number;
-  languages: string;
-  skills: string;
-  address: string;
+  website: string;
   summary: string;
   mobile: string;
   whatsapp: string;
@@ -34,12 +32,15 @@ interface UserProfile {
   youtube: string;
   twitter: string;
   github: string;
-  website: string;
   google_my_business: string;
+  created_at: string;
 }
 
-export default function ProfileCard() {
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+export default function BusinessProfileCard() {
+  // Consume profile from global UserContext
+  const { profile } = useUser();
+  const [businessProfile, setBusinessProfile] = useState<BusinessProfileData | null>(null);
+  // Set loading initially based on whether profile is already in context
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloadingPng, setDownloadingPng] = useState(false);
@@ -49,47 +50,47 @@ export default function ProfileCard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
+    // If profile is already in context, set loading to false and populate businessProfile
+    if (profile) {
+      if (profile.user_type === "business") {
+        // Fetch detailed business profile from 'businesses' table
+        const fetchBusinessProfileData = async () => {
+          try {
+            const { data: businessProfileData, error: businessProfileError } = await supabase
+              .from("businesses")
+              .select("*")
+              .eq("id", profile.id) // Use profile.id from context
+              .single();
 
-        if (userError) {
-          setError("Failed to get user");
-          return;
-        }
-        if (!user) {
-          navigate("/login");
-          return;
-        }
-
-        const { data: userProfileData, error: userProfileError } =
-          await supabase
-            .from("user_profiles")
-            .select("*")
-            .eq("user_id", user.id)
-            .single();
-
-        if (userProfileError) {
-          setError("Error fetching profile: " + userProfileError.message);
-        } else {
-          setUserProfile(userProfileData as UserProfile);
-        }
-      } catch {
-        setError("Unexpected error occurred");
-      } finally {
+            if (businessProfileError) {
+              setError("Error fetching business profile: " + businessProfileError.message);
+            } else {
+              setBusinessProfile(businessProfileData as BusinessProfileData);
+            }
+          } catch (err) {
+            setError("Unexpected error occurred while fetching business profile");
+          } finally {
+            setLoading(false);
+          }
+        };
+        fetchBusinessProfileData();
+      } else if (profile.user_type === "professional") {
+        // If a professional tries to access business card, redirect to their profile card
+        navigate("/profile-card");
+      } else {
+        // Fallback for unexpected user types or if user_type is missing
+        setError("Invalid or missing user type.");
         setLoading(false);
       }
-    };
+    } else {
+      // If profile is not in context, it means user is not logged in or context is not yet loaded
+      setLoading(false); // If profile is null, assume not authenticated for this page's purpose
+      navigate("/login");
+    }
+  }, [profile, navigate]); // Rerun when profile in context changes or navigate function changes
 
-    fetchProfile();
-  }, [navigate]);
-
-  // ✅ Fixed download function
   const handleDownload = async (format: "pdf" | "png") => {
-    if (!cardRef.current || !userProfile) return;
+    if (!cardRef.current || !businessProfile) return;
 
     if (format === "png") {
       setDownloadingPng(true);
@@ -105,7 +106,7 @@ export default function ProfileCard() {
 
       if (format === "png") {
         const link = document.createElement("a");
-        link.download = `${userProfile.name.replace(/\s+/g, "_")}-profile-card.png`;
+        link.download = `${businessProfile.business_name.replace(/\s+/g, "_")}-business-card.png`;
         link.href = dataUrl;
         link.click();
       } else {
@@ -126,7 +127,7 @@ export default function ProfileCard() {
         const y = (pageHeight - imgHeight) / 2;
 
         pdf.addImage(dataUrl, "PNG", x, y, imgWidth, imgHeight);
-        pdf.save(`${userProfile.name.replace(/\s+/g, "_")}-profile-card.pdf`);
+        pdf.save(`${businessProfile.business_name.replace(/\s+/g, "_")}-business-card.pdf`);
       }
     } catch (error) {
       console.error("Download failed:", error);
@@ -140,15 +141,14 @@ export default function ProfileCard() {
     }
   };
 
-  // ✅ Fixed share function
   const handleShare = async () => {
-    const profileUrl = `${window.location.origin}/public-profile/${userProfile?.name}`;
+    const profileUrl = `${window.location.origin}/public-business-profile/${businessProfile?.business_name}`;
 
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `${userProfile?.name}'s Profile`,
-          text: `Check out ${userProfile?.name}'s professional profile`,
+          title: `${businessProfile?.business_name}'s Profile`,
+          text: `Check out ${businessProfile?.business_name}'s business profile`,
           url: profileUrl,
         });
       } catch (error) {
@@ -167,7 +167,7 @@ export default function ProfileCard() {
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
-      <p className="text-center text-lg">Loading profile card...</p>
+      <p className="text-center text-lg">Loading business card...</p>
     </div>
   );
 
@@ -177,9 +177,9 @@ export default function ProfileCard() {
     </div>
   );
 
-  if (!userProfile) return (
+  if (!businessProfile) return (
     <div className="min-h-screen flex items-center justify-center">
-      <p className="text-center text-lg">No profile found</p>
+      <p className="text-center text-lg">No business profile found</p>
     </div>
   );
 
@@ -191,11 +191,11 @@ export default function ProfileCard() {
         {/* Desktop View */}
         <div className="hidden sm:flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
           <button
-            onClick={() => navigate("/profile")}
+            onClick={() => navigate("/business-profile")}
             className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 sm:py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeft size={16} />
-            Back to Profile
+            Back to Business Profile
           </button>
 
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
@@ -231,7 +231,7 @@ export default function ProfileCard() {
         {/* Mobile View */}
         <div className="flex sm:hidden items-center justify-between mb-6">
           <button
-            onClick={() => navigate("/profile")}
+            onClick={() => navigate("/business-profile")}
             className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeft size={20} />
@@ -291,7 +291,7 @@ export default function ProfileCard() {
           </div>
         </div>
 
-        {/* Profile Card */}
+        {/* Business Profile Card */}
         <div
           ref={cardRef}
           className="w-full max-w-md mx-auto rounded-2xl shadow-2xl overflow-hidden"
@@ -301,14 +301,14 @@ export default function ProfileCard() {
             className="relative px-6 py-8 text-white"
             style={{
               background:
-                "linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #1d4ed8 100%)",
+                "linear-gradient(135deg, #f97316 0%, #ef4444 50%, #b91c1c 100%)", // Business-themed gradient
             }}
           >
             <div className="flex justify-center mb-4">
-              {userProfile.logo_url ? (
+              {businessProfile.logo_url ? (
                 <img
-                  src={userProfile.logo_url}
-                  alt="Profile"
+                  src={businessProfile.logo_url}
+                  alt="Business Logo"
                   className="w-24 h-24 rounded-full object-cover border-4 shadow-lg"
                   style={{ borderColor: "#ffffff" }}
                   crossOrigin="anonymous"
@@ -323,51 +323,54 @@ export default function ProfileCard() {
                   }}
                 >
                   <span className="text-white text-2xl font-bold">
-                    {userProfile.name?.charAt(0)?.toUpperCase() || "?"}
+                    {businessProfile.business_name?.charAt(0)?.toUpperCase() || "?"}
                   </span>
                 </div>
               )}
             </div>
 
             <h1 className="text-2xl font-bold text-center text-white mb-1">
-              {userProfile.name}
+              {businessProfile.business_name}
             </h1>
+            <p className="text-center text-white text-sm opacity-90">
+              {businessProfile.industry}
+            </p>
           </div>
 
           <div className="px-6 py-6" style={{ backgroundColor: "#ffffff" }}>
             <div className="mb-6">
               <h2
                 className="text-lg font-semibold mb-3"
-                style={{ color: "#2563eb" }}
+                style={{ color: "#ef4444" }} // Business-themed color
               >
-                Professional Summary
+                Business Summary
               </h2>
               <p
                 className="text-sm leading-relaxed"
                 style={{ color: "#374151" }}
               >
-                {userProfile.summary ||
-                  `${userProfile.profession} with ${userProfile.experience} years of experience. Skilled professional ready to deliver exceptional results.`}
+                {businessProfile.summary ||
+                  `Specializing in ${businessProfile.industry || "various services"}, ${businessProfile.business_name} is committed to delivering excellence.`}
               </p>
             </div>
 
             <div className="space-y-3">
-              {userProfile.mobile && (
+              {businessProfile.mobile && (
                 <div
                   className="flex items-center gap-3"
                   style={{ color: "#374151" }}
                 >
                   <div
                     className="p-2 rounded-full"
-                    style={{ backgroundColor: "#dbeafe" }}
+                    style={{ backgroundColor: "#fee2e2" }} // Business-themed color
                   >
-                    <Phone size={16} style={{ color: "#2563eb" }} />
+                    <Phone size={16} style={{ color: "#ef4444" }} />
                   </div>
-                  <span className="text-sm">{userProfile.mobile}</span>
+                  <span className="text-sm">{businessProfile.mobile}</span>
                 </div>
               )}
 
-              {userProfile.whatsapp && (
+              {businessProfile.whatsapp && (
                 <div
                   className="flex items-center gap-3"
                   style={{ color: "#374151" }}
@@ -378,11 +381,11 @@ export default function ProfileCard() {
                   >
                     <Phone size={16} style={{ color: "#059669" }} />
                   </div>
-                  <span className="text-sm">{userProfile.whatsapp}</span>
+                  <span className="text-sm">{businessProfile.whatsapp}</span>
                 </div>
               )}
 
-              {userProfile.email && (
+              {businessProfile.email && (
                 <div
                   className="flex items-center gap-3"
                   style={{ color: "#374151" }}
@@ -393,22 +396,22 @@ export default function ProfileCard() {
                   >
                     <Mail size={16} style={{ color: "#dc2626" }} />
                   </div>
-                  <span className="text-sm">{userProfile.email}</span>
+                  <span className="text-sm">{businessProfile.email}</span>
                 </div>
               )}
 
-              {userProfile.address && (
+              {businessProfile.website && (
                 <div
                   className="flex items-center gap-3"
                   style={{ color: "#374151" }}
                 >
                   <div
                     className="p-2 rounded-full"
-                    style={{ backgroundColor: "#dcfce7" }}
+                    style={{ backgroundColor: "#dbeafe" }}
                   >
-                    <MapPin size={16} style={{ color: "#059669" }} />
+                    <Globe size={16} style={{ color: "#2563eb" }} />
                   </div>
-                  <span className="text-sm">{userProfile.address}</span>
+                  <span className="text-sm">{businessProfile.website}</span>
                 </div>
               )}
             </div>
@@ -434,9 +437,9 @@ export default function ProfileCard() {
 
               <div className="flex justify-between items-center mt-2">
                 <div className="flex gap-2">
-                  {userProfile.linkedin && (
+                  {businessProfile.linkedin && (
                     <a
-                      href={userProfile.linkedin}
+                      href={businessProfile.linkedin}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-white p-2 rounded-full transition-colors"
@@ -445,17 +448,7 @@ export default function ProfileCard() {
                       <Linkedin size={16} />
                     </a>
                   )}
-                  {userProfile.website && (
-                    <a
-                      href={userProfile.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-white p-2 rounded-full transition-colors"
-                      style={{ backgroundColor: "#4b5563" }}
-                    >
-                      <Globe size={16} />
-                    </a>
-                  )}
+                  {/* Add other social media icons here based on your design preferences */}
                 </div>
 
                 <div className="flex gap-2">

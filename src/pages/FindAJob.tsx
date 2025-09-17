@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import AfterLoginNavbar from "../components/AfterLoginNavbar";
 import Footer from "../components/footer";
 import FilterSidebar from "../components/FilterSidebar";
+
 import graphicDesigner from "../assets/graphic_designer.jpg";
 import digitalMarketing from "../assets/digital_marketing.png";
 import telecallers from "../assets/telecallers.png";
@@ -17,11 +18,10 @@ export default function FindJobPage() {
   const navigate = useNavigate();
 
   const handleSearchSubmit = () => {
-    if (search.trim() === "") return; // Prevent empty search
+    if (search.trim() === "") return;
     navigate(`/browse-job?search=${encodeURIComponent(search.trim())}`);
   };
 
-  // Handle Enter key press
   const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       handleSearchSubmit();
@@ -45,33 +45,34 @@ export default function FindJobPage() {
       <AfterLoginNavbar />
 
       {/* Main Content */}
-      <main className="flex flex-1 bg-gray-50">
+      <main className="flex flex-1 flex-col md:flex-row bg-gray-50">
         {/* Filters Section */}
-        <aside className="w-1/4 p-4 border-r bg-white shadow-sm">
+        <aside className="hidden md:block md:w-1/4 p-4 border-r bg-white shadow-sm">
           <FilterSidebar />
         </aside>
 
         {/* Job Search Section */}
-        <section className="flex-1 p-6">
+        <section className="flex-1 p-4 sm:p-6">
           {/* Search Section */}
           <div className="mb-6 text-center">
-            <h1 className="text-3xl font-bold">
+            <h1 className="text-2xl sm:text-3xl font-bold">
               Find Your Next Job or Freelance Project
             </h1>
             <p className="text-gray-600">✨ Instantly!</p>
-            <div className="flex justify-center mt-4">
+
+            <div className="flex flex-col sm:flex-row justify-center mt-4 w-full sm:w-3/4 lg:w-1/2 mx-auto">
               <input
                 type="text"
                 placeholder="What are you looking for?"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={handleSearchKeyPress}
-                className="border border-gray-300 rounded-l-lg px-4 py-2 w-1/2"
+                className="border border-gray-300 rounded-t-lg sm:rounded-l-lg sm:rounded-t-none px-4 py-2 w-full sm:flex-1"
               />
               <button
                 onClick={handleSearchSubmit}
                 disabled={search.trim() === ""}
-                className="bg-blue-600 text-white px-6 py-2 rounded-r-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed"
+                className="bg-blue-600 text-white px-6 py-2 rounded-b-lg sm:rounded-r-lg sm:rounded-b-none hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed"
               >
                 Search
               </button>
@@ -80,11 +81,13 @@ export default function FindJobPage() {
 
           {/* Categories */}
           <div className="mt-8">
-            <h2 className="text-2xl font-semibold">Browse by Category</h2>
+            <h2 className="text-xl sm:text-2xl font-semibold">
+              Browse by Category
+            </h2>
             <p className="text-gray-500 mb-4">
               Find the perfect talent for your project
             </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
               {categories.map((category, index) => (
                 <div
                   key={index}
@@ -98,12 +101,13 @@ export default function FindJobPage() {
                   <img
                     src={category.img}
                     alt={category.name}
-                    className="w-16 h-16 mx-auto mb-3 rounded-full object-cover"
+                    className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-3 rounded-full object-cover"
                   />
-                  <p>{category.name}</p>
+                  <p className="text-sm sm:text-base">{category.name}</p>
                 </div>
               ))}
             </div>
+
             <div className="flex justify-center mt-6">
               <button
                 className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-gray-100"

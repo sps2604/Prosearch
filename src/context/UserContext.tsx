@@ -1,10 +1,13 @@
 // src/context/UserContext.tsx
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode, useMemo } from "react";
 
 interface Profile {
-  first_name: string;
-  last_name: string;
-  email: string;
+  id: string; // Add the user ID to the profile interface
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  business_name?: string; // Add business_name for business users
+  user_type?: "professional" | "business"; // Add user_type field
 }
 
 interface UserContextType {
@@ -19,8 +22,13 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export function UserProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
 
+  const contextValue = useMemo(() => ({
+    profile,
+    setProfile,
+  }), [profile, setProfile]);
+
   return (
-    <UserContext.Provider value={{ profile, setProfile }}>
+    <UserContext.Provider value={contextValue}>
       {children}
     </UserContext.Provider>
   );

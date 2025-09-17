@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AfterLoginNavbar from "../components/AfterLoginNavbar";
 import { FaUser, FaAddressBook, FaLink, FaUpload, FaTimes } from "react-icons/fa";
@@ -6,24 +6,19 @@ import { supabase } from "../lib/supabaseClient";
 
 type Tab = "personal" | "contact" | "links";
 
-export default function CreateProfile() {
+export default function CreateBusinessProfile() {
   const [activeTab, setActiveTab] = useState<Tab>("personal");
   const [uploadMode, setUploadMode] = useState<"url" | "upload">("upload");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [uploading, setUploading] = useState(false);
-  const [loadingUserType, setLoadingUserType] = useState(true);
   const navigate = useNavigate();
 
-  // Form data - Moved to top level
   const [formData, setFormData] = useState({
-    name: "",
-    profession: "",
+    business_name: "",
+    industry: "",
     logo_url: "",
-    experience: "",
-    languages: "",
-    skills: "",
-    address: "",
+    website: "",
     summary: "",
     mobile: "",
     whatsapp: "",
@@ -34,69 +29,26 @@ export default function CreateProfile() {
     youtube: "",
     twitter: "",
     github: "",
-    website: "",
     google_my_business: "",
   });
-
-  useEffect(() => {
-    const checkUserType = async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error) {
-        console.error("Error fetching user:", error);
-        navigate("/login"); // Redirect to login if user not found
-        return;
-      }
-      if (user) {
-        const userType = user.user_metadata?.user_type;
-        if (userType === "business") {
-          navigate("/create-business-profile"); // Redirect to business profile creation
-        } else if (userType === "professional") {
-          setLoadingUserType(false); // User is a professional, proceed with this page
-        } else {
-          // Handle cases where user_type is not set or unexpected
-          console.warn("User type not specified or unknown, defaulting to professional:", userType);
-          setLoadingUserType(false);
-        }
-      } else {
-        navigate("/login");
-      }
-    };
-
-    checkUserType();
-  }, [navigate]);
-
-  if (loadingUserType) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
-        <p className="text-lg text-gray-700">Loading profile...</p>
-      </div>
-    );
-  }
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Handle file selection
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
       const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
       if (!validTypes.includes(file.type)) {
         alert('Please select a valid image file (JPEG, PNG, or WebP)');
         return;
       }
-
-      // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         alert('File size must be less than 5MB');
         return;
       }
-
       setSelectedFile(file);
-      
-      // Create preview
       const reader = new FileReader();
       reader.onload = (e) => {
         setPreviewUrl(e.target?.result as string);
@@ -105,55 +57,45 @@ export default function CreateProfile() {
     }
   };
 
-  // Remove selected file
   const removeSelectedFile = () => {
     setSelectedFile(null);
     setPreviewUrl("");
-    // Clear the file input
-    const fileInput = document.getElementById('profile-image') as HTMLInputElement;
+    const fileInput = document.getElementById('business-logo') as HTMLInputElement;
     if (fileInput) {
       fileInput.value = '';
     }
   };
 
-  // Upload file to Supabase Storage - FIXED VERSION
-  const uploadProfileImage = async (userId: string): Promise<string | null> => {
+  const uploadBusinessLogo = async (userId: string): Promise<string | null> => {
     if (!selectedFile) return null;
-
     try {
-      console.log('Starting upload for user:', userId);
-      
-      // Create unique filename
+      console.log("Attempting to upload business logo...");
       const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${userId}-${Date.now()}.${fileExt}`;
-      const filePath = `profile-images/${fileName}`;
+      const fileName = `${userId}-business-logo-${Date.now()}.${fileExt}`;
+      const filePath = `business-logos/${fileName}`;
 
-      console.log('Uploading to path:', filePath);
+      console.log(`Uploading file to: ${filePath}`);
 
-      // Upload to Supabase Storage
-      const { data, error } = await supabase.storage
-        .from('profiles')
+      const {  error } = await supabase.storage
+        .from('business_logos') // You might need to create this bucket in Supabase Storage
         .upload(filePath, selectedFile, {
           cacheControl: '3600',
           upsert: false
         });
 
       if (error) {
-        console.error('Upload error:', error);
+        console.error("Supabase Storage Upload Error:", error);
         throw new Error(`Upload failed: ${error.message}`);
       }
 
-      console.log('Upload successful:', data);
-
-      // Get public URL
+      console.log("Upload successful, fetching public URL...");
       const { data: { publicUrl } } = supabase.storage
-        .from('profiles')
+        .from('business_logos')
         .getPublicUrl(filePath);
-
-      console.log('Public URL generated:', publicUrl);
+      console.log("Public URL:", publicUrl);
       return publicUrl;
     } catch (error) {
-      console.error('Error uploading image:', error);
+      console.error('Error in uploadBusinessLogo:', error);
       throw error;
     }
   };
@@ -168,70 +110,51 @@ export default function CreateProfile() {
     else if (activeTab === "contact") setActiveTab("personal");
   };
 
-  // FIXED handleSubmit function with proper error handling
   const handleSubmit = async () => {
     try {
-      console.log('Starting form submission...');
       setUploading(true);
-
-      // Get the logged-in user
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
         console.error("User fetch error:", userError);
-        alert("You must be logged in to create a profile.");
+        alert("You must be logged in to create a business profile.");
         return;
       }
+      console.log("User authenticated:", user.id);
 
-      console.log('User authenticated:', user.id);
+      let logoImageUrl: string | null = formData.logo_url.trim() || null;
 
-      // Fixed: Handle empty string and null cases properly
-      let profileImageUrl: string | null = formData.logo_url.trim() || null;
-
-      // If user uploaded a file, upload it first
       if (uploadMode === "upload" && selectedFile) {
-        console.log('Upload mode: file upload');
+        console.log("Logo upload mode detected, attempting upload...");
         try {
-          const uploadedUrl = await uploadProfileImage(user.id);
+          const uploadedUrl = await uploadBusinessLogo(user.id);
           if (uploadedUrl) {
-            profileImageUrl = uploadedUrl;
-            console.log('Image uploaded successfully:', uploadedUrl);
+            logoImageUrl = uploadedUrl;
+            console.log("Business logo uploaded successfully.");
           } else {
-            console.error('Upload returned null');
-            alert("Failed to upload profile image. Please try again.");
+            console.error("uploadBusinessLogo returned null URL.");
+            alert("Failed to upload business logo. Please try again.");
             return;
           }
         } catch (error) {
-          console.error("Upload error:", error);
-          alert(`Failed to upload profile image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          console.error("Error during business logo upload:", error);
+          alert(`Failed to upload business logo: ${error instanceof Error ? error.message : 'Unknown error'}`);
           return;
         }
       } else if (uploadMode === "upload" && !selectedFile) {
-        // If in upload mode but no file selected, set to null
-        profileImageUrl = null;
-        console.log('Upload mode but no file selected');
+        console.log("Upload mode selected but no file chosen.");
+        logoImageUrl = null;
       } else {
-        console.log('URL mode:', profileImageUrl);
+        console.log("URL mode selected for logo. Using provided URL:", logoImageUrl);
       }
 
-      console.log('Saving profile to database...');
-      
-      // Insert into user_profiles with user.id
-      const { error } = await supabase.from("user_profiles").insert([
+      console.log("Attempting to insert business profile into Supabase...");
+      const { error } = await supabase.from("businesses").insert([
         {
-          user_id: user.id,
-          name: formData.name,
-          profession: formData.profession,
-          logo_url: profileImageUrl, // This can now be string or null
-          experience: formData.experience
-            ? parseInt(formData.experience)
-            : null,
-          languages: formData.languages,
-          skills: formData.skills,
-          address: formData.address,
+          id: user.id,
+          business_name: formData.business_name,
+          industry: formData.industry,
+          logo_url: logoImageUrl,
+          website: formData.website,
           summary: formData.summary,
           mobile: formData.mobile,
           whatsapp: formData.whatsapp,
@@ -242,25 +165,24 @@ export default function CreateProfile() {
           youtube: formData.youtube,
           twitter: formData.twitter,
           github: formData.github,
-          website: formData.website,
           google_my_business: formData.google_my_business,
         },
       ]);
 
       if (error) {
-        console.error("Database insert error:", error);
-        alert(`Failed to save profile: ${error.message}`);
+        console.error("Supabase Database Insert Error:", error);
+        alert(`Failed to save business profile: ${error.message}`);
       } else {
-        console.log('Profile saved successfully');
-        alert("Profile created successfully!");
-        navigate("/profile");
+        console.log("Business profile saved successfully.");
+        alert("Business profile created successfully!");
+        navigate("/business-profile"); // Navigate to a specific business dashboard
       }
     } catch (err) {
-      console.error("Unexpected error:", err);
+      console.error("Unexpected error in handleSubmit:", err);
       alert(`An unexpected error occurred: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
-      console.log('Setting uploading to false');
       setUploading(false);
+      console.log("Uploading state set to false.");
     }
   };
 
@@ -269,13 +191,13 @@ export default function CreateProfile() {
      ${activeTab === tab ? "bg-blue-600 text-white shadow-lg" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-100">
       <AfterLoginNavbar />
 
       {/* Tabs */}
       <div className="flex justify-center mt-6 space-x-2">
         <div className={tabClass("personal")} onClick={() => setActiveTab("personal")}>
-          <FaUser /> Personal
+          <FaUser /> Business Info
         </div>
         <div className={tabClass("contact")} onClick={() => setActiveTab("contact")}>
           <FaAddressBook /> Contact
@@ -288,37 +210,38 @@ export default function CreateProfile() {
       {/* Form Card */}
       <div className="bg-white shadow-xl max-w-2xl mx-auto mt-8 rounded-2xl p-8 border border-gray-100">
         <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">
-          Create Professional Profile
+          Create Business Profile
         </h2>
 
         {/* Personal Details */}
         {activeTab === "personal" && (
           <div className="space-y-5">
             <div>
-              <label className="block font-semibold text-gray-700 mb-1">Name:</label>
+              <label className="block font-semibold text-gray-700 mb-1">Business Name:</label>
               <input
-                value={formData.name}
-                onChange={(e) => handleChange("name", e.target.value)}
+                value={formData.business_name}
+                onChange={(e) => handleChange("business_name", e.target.value)}
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm
                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="Enter full name or business name"
+                placeholder="Enter your business name"
+                required
               />
             </div>
 
             <div>
-              <label className="block font-semibold text-gray-700 mb-1">Profession / Services:</label>
+              <label className="block font-semibold text-gray-700 mb-1">Industry:</label>
               <input
-                value={formData.profession}
-                onChange={(e) => handleChange("profession", e.target.value)}
+                value={formData.industry}
+                onChange={(e) => handleChange("industry", e.target.value)}
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
                    focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="e.g. Digital Marketing, Photography"
+                placeholder="e.g. Technology, Food & Beverage, Consulting"
               />
             </div>
 
-            {/* Profile Image Upload Section */}
+            {/* Business Logo Upload Section */}
             <div>
-              <label className="block font-semibold text-gray-700 mb-3">Profile Photo:</label>
+              <label className="block font-semibold text-gray-700 mb-3">Business Logo:</label>
               
               {/* Upload Mode Toggle */}
               <div className="flex gap-4 mb-4">
@@ -332,7 +255,7 @@ export default function CreateProfile() {
                   }`}
                 >
                   <FaUpload className="inline mr-2" />
-                  Upload Photo
+                  Upload Logo
                 </button>
                 <button
                   type="button"
@@ -354,15 +277,15 @@ export default function CreateProfile() {
                   {!selectedFile ? (
                     <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 transition-colors">
                       <input
-                        id="profile-image"
+                        id="business-logo"
                         type="file"
                         accept="image/jpeg,image/jpg,image/png,image/webp"
                         onChange={handleFileSelect}
                         className="hidden"
                       />
-                      <label htmlFor="profile-image" className="cursor-pointer">
+                      <label htmlFor="business-logo" className="cursor-pointer">
                         <FaUpload className="mx-auto text-4xl text-gray-400 mb-4" />
-                        <p className="text-gray-600 mb-2">Click to upload profile photo</p>
+                        <p className="text-gray-600 mb-2">Click to upload business logo</p>
                         <p className="text-sm text-gray-400">JPEG, PNG, WebP (Max 5MB)</p>
                       </label>
                     </div>
@@ -393,63 +316,30 @@ export default function CreateProfile() {
                   onChange={(e) => handleChange("logo_url", e.target.value)}
                   className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
                      focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                  placeholder="Enter image URL"
+                  placeholder="Enter logo image URL"
                 />
               )}
             </div>
 
             <div>
-              <label className="block font-semibold text-gray-700 mb-1">Experience (Years):</label>
+              <label className="block font-semibold text-gray-700 mb-1">Website / Portfolio:</label>
               <input
-                value={formData.experience}
-                onChange={(e) => handleChange("experience", e.target.value)}
+                value={formData.website}
+                onChange={(e) => handleChange("website", e.target.value)}
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
                    focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="e.g. 5"
+                placeholder="e.g. https://www.yourbusiness.com"
               />
             </div>
 
             <div>
-              <label className="block font-semibold text-gray-700 mb-1">Languages Known:</label>
-              <input
-                value={formData.languages}
-                onChange={(e) => handleChange("languages", e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
-                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="e.g. English, Hindi"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">Skills:</label>
-              <input
-                value={formData.skills}
-                onChange={(e) => handleChange("skills", e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
-                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="e.g. Web Development, Graphic Design"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">Address:</label>
-              <input
-                value={formData.address}
-                onChange={(e) => handleChange("address", e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
-                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="Enter your full address"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">Professional Summary:</label>
+              <label className="block font-semibold text-gray-700 mb-1">Business Summary:</label>
               <textarea
                 value={formData.summary}
                 onChange={(e) => handleChange("summary", e.target.value)}
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm h-28 focus:outline-none
                    focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="Brief about you, your background and goals"
+                placeholder="Brief about your business, its services and mission"
               />
             </div>
           </div>
@@ -487,7 +377,7 @@ export default function CreateProfile() {
                 onChange={(e) => handleChange("email", e.target.value)}
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
                            focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="Enter professional or business email"
+                placeholder="Enter business email"
               />
             </div>
           </div>
@@ -503,7 +393,7 @@ export default function CreateProfile() {
               ["youtube", "YouTube"],
               ["twitter", "Twitter"],
               ["github", "GitHub"],
-              ["website", "Website / Portfolio"],
+              ["website", "Website Link (if different from above)"],
               ["google_my_business", "Google My Business Link"],
             ].map(([field, label], index) => (
               <div key={index}>

@@ -18,8 +18,10 @@ import Profile from "../pages/Profile";
 // New Profile Pages
 import ProfileCard from "../pages/ProfileCard";
 import PublicProfile from "../pages/PublicProfile";
-import PublicProfileCard from "../pages/PublicProfileCard";
-
+import CreateBusinessProfile from "../pages/CreateBusinessProfile";
+import BusinessProfilePage from "../pages/BusinessProfile";
+import LoginRedirect from "../pages/LoginRedirect";
+import BusinessProfileCard from "../pages/BusinessProfileCard";
 
 export default function AppRoutes() {
   return (
@@ -32,6 +34,7 @@ export default function AppRoutes() {
           <Route path="/register" element={<Register />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/home2" element={<Home2 />} />
+          <Route path="/login-redirect" element={<LoginRedirect />} />
 
           {/* Core Job Pages */}
           <Route path="/post-job" element={<PostJobPage />} />
@@ -43,11 +46,13 @@ export default function AppRoutes() {
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/job-posted" element={<JobPosted />} />
           <Route path="/create-profile" element={<CreateProfile />} />
+          <Route path="/create-business-profile" element={<CreateBusinessProfile />} />
 
           {/* Profile Pages */}
-          <Route path="/public-profile/:userId" element={<PublicProfileCard />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/business-profile" element={<BusinessProfilePage />} />
           <Route path="/profile-card" element={<ProfileCard />} />
+          <Route path="/business-profile-card" element={<BusinessProfileCard />} />
           <Route path="/public-profile/:name" element={<PublicProfile />} />
         </Routes>
       </MainLayout>
