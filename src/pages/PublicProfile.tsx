@@ -139,193 +139,162 @@ export default function PublicProfile() {
   ].filter(link => link.url);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Header */}
-      <div className="bg-white shadow-sm">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          <h1 className="text-2xl font-bold text-gray-800">Professional Profile</h1>
-        </div>
-      </div>
-
-      <div className="max-w-4xl mx-auto p-6">
-        {/* Main Profile Card */}
-        <div className="bg-white rounded-3xl shadow-xl overflow-hidden mb-8">
-          {/* Hero Section */}
-          <div className="bg-gradient-to-r from-blue-500 to-purple-600 px-8 py-12 text-white">
-            <div className="flex flex-col md:flex-row items-center gap-8">
-              <div className="flex-shrink-0">
-                {userProfile.logo_url ? (
-                  <img
-                    src={userProfile.logo_url}
-                    alt="Profile"
-                    className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
-                  />
-                ) : (
-                  <div className="w-32 h-32 bg-white bg-opacity-20 rounded-full flex items-center justify-center border-4 border-white shadow-lg">
-                    <span className="text-white text-4xl font-bold">
-                      {userProfile.name?.charAt(0)?.toUpperCase() || '?'}
-                    </span>
-                  </div>
-                )}
-              </div>
-              
-              <div className="text-center md:text-left">
-                <h1 className="text-4xl font-bold mb-2">{userProfile.name}</h1>
-                <p className="text-xl mb-2 opacity-90">{userProfile.profession}</p>
-                <div className="inline-block bg-white bg-opacity-20 rounded-full px-4 py-1">
-                  <span className="font-medium">
-                    {userProfile.experience} years experience
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="w-full max-w-md mx-auto px-4">
+        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+          {/* Header with Gradient (match card view) */}
+          <div 
+            className="relative px-6 py-8 text-white"
+            style={{
+              background: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #1d4ed8 100%)'
+            }}
+          >
+            <div className="flex justify-center mb-4">
+              {userProfile.logo_url ? (
+                <img
+                  src={userProfile.logo_url}
+                  alt="Profile"
+                  className="w-24 h-24 rounded-full object-cover border-4 shadow-lg"
+                  style={{ borderColor: '#ffffff' }}
+                  crossOrigin="anonymous"
+                  loading="eager"
+                />
+              ) : (
+                <div 
+                  className="w-24 h-24 rounded-full flex items-center justify-center border-4 shadow-lg"
+                  style={{ 
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    borderColor: '#ffffff' 
+                  }}
+                >
+                  <span className="text-white text-2xl font-bold">
+                    {userProfile.name?.charAt(0)?.toUpperCase() || "?"}
                   </span>
                 </div>
-              </div>
+              )}
             </div>
+
+            <h1 className="text-2xl font-bold text-center text-white mb-1">
+              {userProfile.name}
+            </h1>
+            <p className="text-center text-white text-sm opacity-90">
+              {userProfile.profession}
+            </p>
           </div>
 
-          {/* Contact Actions */}
-          <div className="px-8 py-6 bg-gray-50 border-b">
-            <div className="flex flex-wrap gap-4 justify-center md:justify-start">
+          {/* Content Section */}
+          <div className="px-6 py-6" style={{ backgroundColor: '#ffffff' }}>
+            <div className="mb-6">
+              <h2
+                className="text-lg font-semibold mb-3"
+                style={{ color: '#2563eb' }}
+              >
+                Professional Summary
+              </h2>
+              <p
+                className="text-sm leading-relaxed"
+                style={{ color: '#374151' }}
+              >
+                {userProfile.summary ||
+                  `${userProfile.profession} with ${userProfile.experience} years of experience. Skilled professional ready to deliver exceptional results.`}
+              </p>
+            </div>
+
+            <div className="space-y-3">
               {userProfile.mobile && (
-                <button
-                  onClick={handlePhoneClick}
-                  className="flex items-center gap-2 px-6 py-3 bg-green-500 text-white rounded-full hover:bg-green-600 transition-colors shadow-md"
+                <div
+                  className="flex items-center gap-3"
+                  style={{ color: '#374151' }}
                 >
-                  <Phone size={18} />
-                  Call Now
-                </button>
+                  <div
+                    className="p-2 rounded-full"
+                    style={{ backgroundColor: '#dbeafe' }}
+                  >
+                    <Phone size={16} style={{ color: '#2563eb' }} />
+                  </div>
+                  <span className="text-sm">{userProfile.mobile}</span>
+                </div>
               )}
-              
-              {userProfile.whatsapp && (
-                <button
-                  onClick={handleWhatsAppClick}
-                  className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors shadow-md"
-                >
-                  <MessageCircle size={18} />
-                  WhatsApp
-                </button>
-              )}
-              
+
               {userProfile.email && (
-                <button
-                  onClick={handleEmailClick}
-                  className="flex items-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors shadow-md"
+                <div
+                  className="flex items-center gap-3"
+                  style={{ color: '#374151' }}
                 >
-                  <Mail size={18} />
-                  Email
-                </button>
+                  <div
+                    className="p-2 rounded-full"
+                    style={{ backgroundColor: '#fee2e2' }}
+                  >
+                    <Mail size={16} style={{ color: '#dc2626' }} />
+                  </div>
+                  <span className="text-sm">{userProfile.email}</span>
+                </div>
+              )}
+
+              {userProfile.address && (
+                <div
+                  className="flex items-center gap-3"
+                  style={{ color: '#374151' }}
+                >
+                  <div
+                    className="p-2 rounded-full"
+                    style={{ backgroundColor: '#dcfce7' }}
+                  >
+                    <MapPin size={16} style={{ color: '#059669' }} />
+                  </div>
+                  <span className="text-sm">{userProfile.address}</span>
+                </div>
               )}
             </div>
-          </div>
 
-          {/* Profile Content */}
-          <div className="px-8 py-8">
-            {/* About Me */}
-            {userProfile.summary && (
-              <div className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-800 mb-4">About Me</h2>
-                <p className="text-gray-700 leading-relaxed text-lg">{userProfile.summary}</p>
+            <div
+              className="mt-6 pt-4"
+              style={{ borderTop: '1px solid #f3f4f6' }}
+            >
+              <div className="flex justify-between items-center">
+                <h3
+                  className="text-sm font-semibold"
+                  style={{ color: '#1f2937' }}
+                >
+                  Social Media
+                </h3>
               </div>
-            )}
 
-            {/* Skills */}
-            {userProfile.skills && (
-              <div className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-800 mb-4">Core Skills</h2>
-                <div className="flex flex-wrap gap-3">
-                  {userProfile.skills.split(',').map((skill, index) => (
-                    <span
-                      key={index}
-                      className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full font-medium shadow-sm"
-                    >
-                      {skill.trim()}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Languages */}
-            {userProfile.languages && (
-              <div className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-800 mb-4">Languages</h2>
-                <p className="text-gray-700 text-lg">{userProfile.languages}</p>
-              </div>
-            )}
-
-            {/* Contact Information */}
-            <div className="mb-8">
-              <h2 className="text-2xl font-semibold text-gray-800 mb-4">Contact Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {userProfile.mobile && (
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <Phone size={20} className="text-green-500" />
-                    <span className="text-gray-700">{userProfile.mobile}</span>
-                  </div>
+              <div className="flex gap-2 mt-2">
+                {userProfile.linkedin && (
+                  <a
+                    href={userProfile.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white p-2 rounded-full transition-colors"
+                    style={{ backgroundColor: '#2563eb' }}
+                  >
+                    <Linkedin size={16} />
+                  </a>
                 )}
-                
-                {userProfile.email && (
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <Mail size={20} className="text-blue-500" />
-                    <span className="text-gray-700">{userProfile.email}</span>
-                  </div>
-                )}
-                
-                {userProfile.address && (
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg md:col-span-2">
-                    <MapPin size={20} className="text-red-500" />
-                    <span className="text-gray-700">{userProfile.address}</span>
-                  </div>
-                )}
-                
                 {userProfile.website && (
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg md:col-span-2">
-                    <Globe size={20} className="text-purple-500" />
-                    <a href={userProfile.website} target="_blank" rel="noopener noreferrer" 
-                       className="text-blue-600 hover:underline">
-                      {userProfile.website}
-                    </a>
-                  </div>
+                  <a
+                    href={userProfile.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white p-2 rounded-full transition-colors"
+                    style={{ backgroundColor: '#4b5563' }}
+                  >
+                    <Globe size={16} />
+                  </a>
                 )}
               </div>
             </div>
 
-            {/* Social Media */}
-            {socialLinks.length > 0 && (
-              <div>
-                <h2 className="text-2xl font-semibold text-gray-800 mb-4">Connect with Me</h2>
-                <div className="flex flex-wrap gap-4">
-                  {socialLinks.map(({ key, url, icon: Icon, color, name }) => (
-                    <a
-                      key={key}
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
-                    >
-                      <Icon size={20} className={color} />
-                      <span className="text-gray-700">{name}</span>
-                    </a>
-                  ))}
-                  
-                  {userProfile.google_my_business && (
-                    <a
-                      href={userProfile.google_my_business}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
-                    >
-                      <MapPin size={20} className="text-green-600" />
-                      <span className="text-gray-700">Google My Business</span>
-                    </a>
-                  )}
-                </div>
-              </div>
-            )}
+            <div
+              className="mt-4 pt-4 text-center"
+              style={{ borderTop: '1px solid #f3f4f6' }}
+            >
+              <p className="text-xs" style={{ color: '#9ca3af' }}>
+                Powered by Softcadd
+              </p>
+            </div>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="text-center text-gray-500 text-sm">
-          <p>This is a professional profile page</p>
         </div>
       </div>
     </div>
