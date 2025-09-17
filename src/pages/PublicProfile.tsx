@@ -55,12 +55,12 @@ export default function PublicProfile() {
         // Normalize name to be case-insensitive and trimmed
         const raw = decodeURIComponent(name);
         const normalizedName = raw.trim();
-        // Fetch profile by case-insensitive name match
-        const { data: userProfileData, error: userProfileError } = await supabase
+        // Fetch profile by case-insensitive name match; avoid 406 by not using .single()
+        const { data, error: userProfileError } = await supabase
           .from("user_profiles")
           .select("*")
           .ilike("name", normalizedName)
-          .single();
+          .limit(1);
 
         if (userProfileError) {
           if (userProfileError.code === 'PGRST116') {
@@ -69,7 +69,12 @@ export default function PublicProfile() {
             setError("Error fetching profile: " + userProfileError.message);
           }
         } else {
-          setUserProfile(userProfileData as UserProfile);
+          const first = Array.isArray(data) && data.length > 0 ? data[0] : null;
+          if (!first) {
+            setError("Profile not found");
+          } else {
+            setUserProfile(first as UserProfile);
+          }
         }
       } catch (err) {
         setError("Unexpected error occurred");
