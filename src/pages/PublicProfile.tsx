@@ -85,8 +85,6 @@ export default function PublicProfile() {
     fetchPublicProfile();
   }, [name]);
 
-  // Intentionally minimal public view: action handlers removed
-
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="text-center">
@@ -111,8 +109,6 @@ export default function PublicProfile() {
       <p className="text-center text-lg text-gray-600">No profile found</p>
     </div>
   );
-
-  // Social links rendered inline below when present
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -246,6 +242,61 @@ export default function PublicProfile() {
                     style={{ backgroundColor: '#2563eb' }}
                   >
                     <Linkedin size={16} />
+                  </a>
+                )}
+                {userProfile.instagram && (
+                  <a
+                    href={userProfile.instagram}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white p-2 rounded-full transition-colors"
+                    style={{ backgroundColor: '#e1306c' }}
+                  >
+                    <Instagram size={16} />
+                  </a>
+                )}
+                {userProfile.facebook && (
+                  <a
+                    href={userProfile.facebook}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white p-2 rounded-full transition-colors"
+                    style={{ backgroundColor: '#1877f2' }}
+                  >
+                    <Facebook size={16} />
+                  </a>
+                )}
+                {userProfile.youtube && (
+                  <a
+                    href={userProfile.youtube}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white p-2 rounded-full transition-colors"
+                    style={{ backgroundColor: '#ff0000' }}
+                  >
+                    <Youtube size={16} />
+                  </a>
+                )}
+                {userProfile.twitter && (
+                  <a
+                    href={userProfile.twitter}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white p-2 rounded-full transition-colors"
+                    style={{ backgroundColor: '#1da1f2' }}
+                  >
+                    <Twitter size={16} />
+                  </a>
+                )}
+                {userProfile.github && (
+                  <a
+                    href={userProfile.github}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white p-2 rounded-full transition-colors"
+                    style={{ backgroundColor: '#333333' }}
+                  >
+                    <Github size={16} />
                   </a>
                 )}
                 {userProfile.website && (
