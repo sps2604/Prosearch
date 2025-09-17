@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import React,{ useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import FilterSidebar from "../components/FilterSidebar";
 import AfterLoginNavbar from "../components/AfterLoginNavbar";
 import Footer from "../components/footer";
@@ -27,6 +27,7 @@ interface Company {
 
 export default function BrowseJob() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [companies, setCompanies] = useState<{ [key: number]: Company }>({});
@@ -124,12 +125,12 @@ export default function BrowseJob() {
     } catch (error) {
       console.error("❌ Fetch error:", error);
       
-      // ✅ FIXED: Ultra-simple fallback with ALL required fields
+      // Ultra-simple fallback
       try {
         console.log("🔄 Trying simple fallback...");
         const { data: fallbackData } = await supabase
           .from("Job_Posts")
-          .select("id, profession, description, location, salary, experience, job_type, created_at, company_id")
+          .select("id, profession, location, salary, job_type, created_at, company_id")
           .order("created_at", { ascending: false })
           .limit(10);
 
@@ -167,9 +168,9 @@ export default function BrowseJob() {
   }, [search]);
 
   const handleSearch = () => {
-    const params = new URLSearchParams(searchParams);
-    params.set("search", search);
-    window.history.pushState({}, "", `${window.location.pathname}?${params}`);
+    const q = search.trim();
+    if (!q) return;
+    navigate(`/browse-job?search=${encodeURIComponent(q)}`);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -232,7 +233,7 @@ export default function BrowseJob() {
                 placeholder="Search jobs..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
                 className="flex-1 outline-none px-2 text-gray-700"
               />
               <button
@@ -242,6 +243,33 @@ export default function BrowseJob() {
               >
                 {loading ? "..." : "Search"}
               </button>
+            </div>
+
+            {/* Category Grid */}
+            <div className="mt-8">
+              <h2 className="text-xl font-semibold text-gray-800 text-center mb-2">Browse by Category</h2>
+              <p className="text-center text-gray-600 mb-6">Find the perfect talent for your project</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 max-w-4xl">
+                {[
+                  'Graphics Designer',
+                  'Digital Marketing',
+                  'Telecallers',
+                  'Video Editors',
+                  'Java Developers',
+                  'Interns',
+                  'Data Entry',
+                  'Remote Workers'
+                ].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => navigate(`/browse-job?category=${encodeURIComponent(cat)}`)}
+                    className="bg-white rounded-2xl shadow hover:shadow-md transition p-5 text-center border border-gray-100"
+                  >
+                    <div className="w-20 h-20 mx-auto rounded-full bg-gray-50 flex items-center justify-center mb-3 border"/>
+                    <div className="font-medium text-gray-800">{cat}</div>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Results Info */}
@@ -303,16 +331,6 @@ export default function BrowseJob() {
                           <span className="mx-2">•</span>
                           <span>{formatDate(job.created_at)}</span>
                         </div>
-                        
-                        {/* ✅ ADDED: Display job description if available */}
-                        {job.description && (
-                          <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                            {job.description.length > 100 
-                              ? `${job.description.substring(0, 100)}...` 
-                              : job.description}
-                          </p>
-                        )}
-                        
                         <div className="flex items-center gap-3 text-sm">
                           <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
                             💰 {job.salary}
