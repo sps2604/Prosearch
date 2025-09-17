@@ -21,18 +21,20 @@ export default function LoginRedirect() {
       if (user) {
         console.log("LoginRedirect: User found:", user.id);
         
-        // Fetch user_type from database tables
-        let userType = "professional"; // default fallback
+        // ✅ FIXED: Fetch user_type from database tables with proper typing
+        let userType: "professional" | "business" | undefined = "professional"; // default fallback
         
         // Try to get user_type from user_profiles first
         const { data: profileData } = await supabase
           .from("user_profiles")
           .select("user_type, name")
           .eq("user_id", user.id)
-          .single();
+          .order('created_at', { ascending: false })
+          .limit(1);
         
-        if (profileData?.user_type) {
-          userType = profileData.user_type;
+        if (profileData?.[0]?.user_type) {
+          // ✅ Type assertion to ensure correct type
+          userType = profileData[0].user_type as "professional" | "business";
           console.log("LoginRedirect: User type from user_profiles:", userType);
         } else {
           // If not found in user_profiles, try businesses table
@@ -40,10 +42,12 @@ export default function LoginRedirect() {
             .from("businesses")
             .select("user_type, business_name")
             .eq("id", user.id)
-            .single();
+            .order('created_at', { ascending: false })
+            .limit(1);
           
-          if (businessData?.user_type) {
-            userType = businessData.user_type;
+          if (businessData?.[0]?.user_type) {
+            // ✅ Type assertion to ensure correct type
+            userType = businessData[0].user_type as "professional" | "business";
             console.log("LoginRedirect: User type from businesses:", userType);
           }
         }
@@ -51,11 +55,11 @@ export default function LoginRedirect() {
         // Set the user profile in context
         setProfile({
           id: user.id, // Include the user ID
-          first_name: user.user_metadata?.first_name || profileData?.name?.split(' ')[0],
-          last_name: user.user_metadata?.last_name || profileData?.name?.split(' ').slice(1).join(' '),
+          first_name: user.user_metadata?.first_name || profileData?.[0]?.name?.split(' ')[0],
+          last_name: user.user_metadata?.last_name || profileData?.[0]?.name?.split(' ').slice(1).join(' '),
           business_name: user.user_metadata?.business_name,
           email: user.email,
-          user_type: userType,
+          user_type: userType, // ✅ Now properly typed
         });
 
         console.log("LoginRedirect: Profile set in context. Navigating to /home2...");
