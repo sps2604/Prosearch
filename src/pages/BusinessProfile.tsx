@@ -50,11 +50,13 @@ export default function BusinessProfilePage() {
         const fetchBusinessProfileData = async () => {
           try {
             console.log("BusinessProfilePage: Fetching business profile for ID:", profile.id);
+            // ✅ FIXED: Removed .single() and added .limit(1)
             const { data: businessProfileData, error: businessProfileError } = await supabase
               .from("businesses")
               .select("*")
               .eq("id", profile.id) // Use profile.id from context
-              .single();
+              .order('created_at', { ascending: false })
+              .limit(1); // ✅ Changed from .single()
 
             console.log("BusinessProfilePage: Supabase response:", { data: businessProfileData, error: businessProfileError });
 
@@ -62,7 +64,8 @@ export default function BusinessProfilePage() {
               setError("Error fetching business profile: " + businessProfileError.message);
               console.error("BusinessProfilePage: Error fetching business profile:", businessProfileError);
             } else {
-              setBusinessProfile(businessProfileData as BusinessProfileData);
+              // ✅ FIXED: Access data as array
+              setBusinessProfile(businessProfileData?.[0] as BusinessProfileData || null);
               console.log("BusinessProfilePage: Business profile data set successfully.");
             }
           } catch (err) {

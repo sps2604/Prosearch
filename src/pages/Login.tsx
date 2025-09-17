@@ -38,14 +38,39 @@ export default function Login() {
     } else if (data?.user && data?.session) {   // ✅ add this check
       console.log("✅ Login success", data);
 
-      const userType = data.user.user_metadata?.user_type || "professional"; // Add fallback to 'professional'
-      console.log("User type after login:", userType);
+      // Fetch user_type from database tables
+      let userType = "professional"; // default fallback
+      
+      // Try to get user_type from user_profiles first
+      const { data: profileData } = await supabase
+        .from("user_profiles")
+        .select("user_type, name")
+        .eq("user_id", data.user.id)
+        .single();
+      
+      if (profileData?.user_type) {
+        userType = profileData.user_type;
+        console.log("Login: User type from user_profiles:", userType);
+      } else {
+        // If not found in user_profiles, try businesses table
+        const { data: businessData } = await supabase
+          .from("businesses")
+          .select("user_type, business_name")
+          .eq("id", data.user.id)
+          .single();
+        
+        if (businessData?.user_type) {
+          userType = businessData.user_type;
+          console.log("Login: User type from businesses:", userType);
+        }
+      }
 
       // Set the user profile in context
       setProfile({
         id: data.user.id, // Include the user ID
-        first_name: data.user.user_metadata?.first_name,
-        last_name: data.user.user_metadata?.last_name,
+        first_name: data.user.user_metadata?.first_name || profileData?.name?.split(' ')[0],
+        last_name: data.user.user_metadata?.last_name || profileData?.name?.split(' ').slice(1).join(' '),
+        business_name: data.user.user_metadata?.business_name,
         email: data.user.email,
         user_type: userType,
       });

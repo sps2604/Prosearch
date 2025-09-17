@@ -21,13 +21,36 @@ export default function AfterLoginNavbar() {
   const [authUserType, setAuthUserType] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Ensure navbar reflects role immediately after registration (before context is populated)
+  // Fetch user_type from database tables instead of auth metadata
   useEffect(() => {
     const fetchUserType = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      const type = (user?.user_metadata as any)?.user_type ?? null;
-      if (type) setAuthUserType(type);
+      if (!user) return;
+      
+      // Try to get user_type from user_profiles first
+      const { data: profileData } = await supabase
+        .from("user_profiles")
+        .select("user_type")
+        .eq("user_id", user.id)
+        .single();
+      
+      if (profileData?.user_type) {
+        setAuthUserType(profileData.user_type);
+        return;
+      }
+      
+      // If not found in user_profiles, try businesses table
+      const { data: businessData } = await supabase
+        .from("businesses")
+        .select("user_type")
+        .eq("id", user.id)
+        .single();
+      
+      if (businessData?.user_type) {
+        setAuthUserType(businessData.user_type);
+      }
     };
+    
     if (!profile?.user_type) {
       fetchUserType();
     }

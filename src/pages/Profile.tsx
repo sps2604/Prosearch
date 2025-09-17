@@ -47,16 +47,19 @@ export default function ProfilePage() {
         // Fetch detailed professional profile from 'user_profiles' table
         const fetchProfessionalProfile = async () => {
           try {
+            // ✅ FIXED: Removed .single() and added .limit(1)
             const { data: userProfileData, error: userProfileError } = await supabase
               .from("user_profiles")
               .select("*")
               .eq("user_id", profile.id) // Use profile.id from context
-              .single();
+              .order('created_at', { ascending: false })
+              .limit(1); // ✅ Changed from .single()
 
             if (userProfileError) {
               setError("Error fetching professional profile: " + userProfileError.message);
             } else {
-              setUserProfile(userProfileData as UserProfile);
+              // ✅ FIXED: Access data as array
+              setUserProfile(userProfileData?.[0] as UserProfile || null);
             }
           } catch (err) {
             setError("Unexpected error occurred while fetching professional profile");
@@ -76,7 +79,6 @@ export default function ProfilePage() {
     } else {
       // If profile is not in context, it means user is not logged in or context is not yet loaded
       // Redirect to login or keep loading if Auth state is still resolving.
-      // For now, let's assume if profile is null here, a redirect to login is appropriate after initial load.
       // A more robust solution might involve a `ProtectedRoute` or checking `supabase.auth.getSession()` here too.
       setLoading(false); // If profile is null, assume not authenticated for this page's purpose
       navigate("/login");

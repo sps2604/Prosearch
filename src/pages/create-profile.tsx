@@ -47,7 +47,31 @@ export default function CreateProfile() {
         return;
       }
       if (user) {
-        const userType = user.user_metadata?.user_type;
+        // Fetch user_type from database tables
+        let userType = "professional"; // default fallback
+        
+        // Try to get user_type from user_profiles first
+        const { data: profileData } = await supabase
+          .from("user_profiles")
+          .select("user_type")
+          .eq("user_id", user.id)
+          .single();
+        
+        if (profileData?.user_type) {
+          userType = profileData.user_type;
+        } else {
+          // If not found in user_profiles, try businesses table
+          const { data: businessData } = await supabase
+            .from("businesses")
+            .select("user_type")
+            .eq("id", user.id)
+            .single();
+          
+          if (businessData?.user_type) {
+            userType = businessData.user_type;
+          }
+        }
+        
         if (userType === "business") {
           navigate("/create-business-profile"); // Redirect to business profile creation
         } else if (userType === "professional") {

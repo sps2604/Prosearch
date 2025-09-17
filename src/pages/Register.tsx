@@ -42,7 +42,6 @@ export default function Register() {
       }
 
       // Sign up user with Supabase Auth
-      // The profile will be automatically created by the onAuthStateChange listener
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -58,6 +57,62 @@ export default function Register() {
       }
 
       console.log('SignUp successful:', data);
+
+      // Create profile/business record immediately with user_type
+      if (data.user) {
+        if (userType === "professional") {
+          const { error: profileError } = await supabase
+            .from("user_profiles")
+            .insert([{
+              user_id: data.user.id,
+              name: `${firstName} ${lastName}`,
+              user_type: userType,
+              // Add other required fields with defaults
+              profession: "",
+              experience: 0,
+              languages: "",
+              skills: "",
+              address: "",
+              summary: "",
+              mobile: "",
+              whatsapp: "",
+              email: email,
+              linkedin: "",
+              instagram: "",
+              facebook: "",
+              youtube: "",
+              twitter: "",
+              github: "",
+              website: "",
+              google_my_business: ""
+            }]);
+          if (profileError) console.error('Profile creation error:', profileError);
+        } else {
+          const { error: businessError } = await supabase
+            .from("businesses")
+            .insert([{
+              id: data.user.id,
+              business_name: businessName,
+              user_type: userType,
+              // Add other required fields with defaults
+              industry: "",
+              logo_url: "",
+              website: "",
+              summary: "",
+              mobile: "",
+              whatsapp: "",
+              email: email,
+              linkedin: "",
+              instagram: "",
+              facebook: "",
+              youtube: "",
+              twitter: "",
+              github: "",
+              google_my_business: ""
+            }]);
+          if (businessError) console.error('Business creation error:', businessError);
+        }
+      }
 
       // Check if user needs email confirmation
       if (data.user && !data.user.email_confirmed_at) {

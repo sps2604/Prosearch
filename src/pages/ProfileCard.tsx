@@ -65,17 +65,20 @@ export default function ProfileCard() {
           return;
         }
 
+        // ✅ FIXED: Removed .single() and added .limit(1)
         const { data: userProfileData, error: userProfileError } =
           await supabase
             .from("user_profiles")
             .select("*")
             .eq("user_id", user.id)
-            .single();
+            .order('created_at', { ascending: false })
+            .limit(1); // ✅ Changed from .single()
 
         if (userProfileError) {
           setError("Error fetching profile: " + userProfileError.message);
         } else {
-          setUserProfile(userProfileData as UserProfile);
+          // ✅ FIXED: Access data as array
+          setUserProfile(userProfileData?.[0] as UserProfile || null);
         }
       } catch {
         setError("Unexpected error occurred");
@@ -98,9 +101,19 @@ export default function ProfileCard() {
     }
 
     try {
-      const dataUrl = await toPng(cardRef.current, {
+      const element = cardRef.current;
+      const dataUrl = await toPng(element, {
         cacheBust: true,
-        pixelRatio: 3, // high quality
+        pixelRatio: 3,
+        backgroundColor: '#ffffff',
+        width: element.clientWidth,
+        height: element.clientHeight,
+        style: {
+          transform: 'none',
+          transformOrigin: 'top left',
+          background: '#ffffff',
+          margin: '0',
+        }
       });
 
       if (format === "png") {
@@ -114,11 +127,13 @@ export default function ProfileCard() {
         const pageHeight = pdf.internal.pageSize.getHeight();
 
         const imgProps = pdf.getImageProperties(dataUrl);
-        let imgWidth = pageWidth;
+        // Keep margins to avoid clipping
+        const margin = 10;
+        let imgWidth = pageWidth - margin * 2;
         let imgHeight = (imgProps.height * imgWidth) / imgProps.width;
 
         if (imgHeight > pageHeight) {
-          imgHeight = pageHeight;
+          imgHeight = pageHeight - margin * 2;
           imgWidth = (imgProps.width * imgHeight) / imgProps.height;
         }
 
@@ -142,7 +157,8 @@ export default function ProfileCard() {
 
   // ✅ Fixed share function
   const handleShare = async () => {
-    const profileUrl = `${window.location.origin}/public-profile/${userProfile?.name}`;
+    const safeName = encodeURIComponent(userProfile?.name ?? "");
+    const profileUrl = `${window.location.origin}/public-profile/${safeName}`;
 
     if (navigator.share) {
       try {
