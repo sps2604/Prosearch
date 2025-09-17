@@ -40,7 +40,7 @@ export default function Help() {
             onClick={() => navigate("/how-to/search-professionals")}
             className="bg-white shadow-md rounded-2xl p-6 hover:shadow-lg transition"
           >
-            <i className="fas fa-users text-3xl text-purple-500 mb-4"></i>
+            <i className="fas fa-users text-3xl text-yellow-500 mb-4"></i>
             <p className="font-medium">Search Professionals</p>
           </button>
         </div>

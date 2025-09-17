@@ -99,19 +99,9 @@ export default function BusinessProfileCard() {
     }
 
     try {
-      const element = cardRef.current;
-      const dataUrl = await toPng(element, {
+      const dataUrl = await toPng(cardRef.current, {
         cacheBust: true,
-        pixelRatio: 3,
-        backgroundColor: '#ffffff',
-        width: element.clientWidth,
-        height: element.clientHeight,
-        style: {
-          transform: 'none',
-          transformOrigin: 'top left',
-          background: '#ffffff',
-          margin: '0',
-        }
+        pixelRatio: 3, // high quality
       });
 
       if (format === "png") {
@@ -125,12 +115,11 @@ export default function BusinessProfileCard() {
         const pageHeight = pdf.internal.pageSize.getHeight();
 
         const imgProps = pdf.getImageProperties(dataUrl);
-        const margin = 10;
-        let imgWidth = pageWidth - margin * 2;
+        let imgWidth = pageWidth;
         let imgHeight = (imgProps.height * imgWidth) / imgProps.width;
 
         if (imgHeight > pageHeight) {
-          imgHeight = pageHeight - margin * 2;
+          imgHeight = pageHeight;
           imgWidth = (imgProps.width * imgHeight) / imgProps.height;
         }
 
@@ -153,8 +142,7 @@ export default function BusinessProfileCard() {
   };
 
   const handleShare = async () => {
-    const safeName = encodeURIComponent(businessProfile?.business_name ?? "");
-    const profileUrl = `${window.location.origin}/public-business-profile/${safeName}`;
+    const profileUrl = `${window.location.origin}/public-business-profile/${businessProfile?.business_name}`;
 
     if (navigator.share) {
       try {

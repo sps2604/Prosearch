@@ -98,19 +98,9 @@ export default function ProfileCard() {
     }
 
     try {
-      const element = cardRef.current;
-      const dataUrl = await toPng(element, {
+      const dataUrl = await toPng(cardRef.current, {
         cacheBust: true,
-        pixelRatio: 3,
-        backgroundColor: '#ffffff',
-        width: element.clientWidth,
-        height: element.clientHeight,
-        style: {
-          transform: 'none',
-          transformOrigin: 'top left',
-          background: '#ffffff',
-          margin: '0',
-        }
+        pixelRatio: 3, // high quality
       });
 
       if (format === "png") {
@@ -124,13 +114,11 @@ export default function ProfileCard() {
         const pageHeight = pdf.internal.pageSize.getHeight();
 
         const imgProps = pdf.getImageProperties(dataUrl);
-        // Keep margins to avoid clipping
-        const margin = 10;
-        let imgWidth = pageWidth - margin * 2;
+        let imgWidth = pageWidth;
         let imgHeight = (imgProps.height * imgWidth) / imgProps.width;
 
         if (imgHeight > pageHeight) {
-          imgHeight = pageHeight - margin * 2;
+          imgHeight = pageHeight;
           imgWidth = (imgProps.width * imgHeight) / imgProps.height;
         }
 
@@ -154,8 +142,7 @@ export default function ProfileCard() {
 
   // ✅ Fixed share function
   const handleShare = async () => {
-    const safeName = encodeURIComponent(userProfile?.name ?? "");
-    const profileUrl = `${window.location.origin}/public-profile/${safeName}`;
+    const profileUrl = `${window.location.origin}/public-profile/${userProfile?.name}`;
 
     if (navigator.share) {
       try {

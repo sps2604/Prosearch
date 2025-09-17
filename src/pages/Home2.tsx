@@ -11,7 +11,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { useUser } from "../context/UserContext"; // Import useUser
 
 export default function Home2() {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const { profile } = useUser(); // Access profile from UserContext
 
   useEffect(() => {
