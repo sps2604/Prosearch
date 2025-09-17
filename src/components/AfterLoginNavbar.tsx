@@ -65,20 +65,24 @@ export default function AfterLoginNavbar() {
           <FaHome className="text-xl mb-1" />
           Home
         </button>
-        <button
-          onClick={() => handleNav("/find-job")}
-          className="flex flex-col items-center text-xs hover:text-green-600 p-2 rounded-lg hover:bg-green-50"
-        >
-          <FaBriefcase className="text-xl mb-1" />
-          Jobs
-        </button>
-        <button
-          onClick={() => handleNav("/post-job")}
-          className="flex flex-col items-center text-xs hover:text-purple-600 p-2 rounded-lg hover:bg-purple-50"
-        >
-          <MdPostAdd className="text-xl mb-1" />
-          Post
-        </button>
+        {profile?.user_type !== "business" && (
+          <button
+            onClick={() => handleNav("/find-job")}
+            className="flex flex-col items-center text-xs hover:text-green-600 p-2 rounded-lg hover:bg-green-50"
+          >
+            <FaBriefcase className="text-xl mb-1" />
+            Jobs
+          </button>
+        )}
+        {profile?.user_type === "business" && (
+          <button
+            onClick={() => handleNav("/post-job")}
+            className="flex flex-col items-center text-xs hover:text-purple-600 p-2 rounded-lg hover:bg-purple-50"
+          >
+            <MdPostAdd className="text-xl mb-1" />
+            Post
+          </button>
+        )}
         <button
           onClick={() => handleNav("/help")}
           className="flex flex-col items-center text-xs hover:text-orange-600 p-2 rounded-lg hover:bg-orange-50"
@@ -168,18 +172,22 @@ export default function AfterLoginNavbar() {
           >
             <FaHome /> Home
           </button>
-          <button
-            onClick={() => handleNav("/find-job")}
-            className="w-full flex items-center gap-2 py-2 px-3 hover:bg-green-50 rounded-md"
-          >
-            <FaBriefcase /> Jobs
-          </button>
-          <button
-            onClick={() => handleNav("/post-job")}
-            className="w-full flex items-center gap-2 py-2 px-3 hover:bg-purple-50 rounded-md"
-          >
-            <MdPostAdd /> Post
-          </button>
+          {profile?.user_type !== "business" && (
+            <button
+              onClick={() => handleNav("/find-job")}
+              className="w-full flex items-center gap-2 py-2 px-3 hover:bg-green-50 rounded-md"
+            >
+              <FaBriefcase /> Jobs
+            </button>
+          )}
+          {profile?.user_type === "business" && (
+            <button
+              onClick={() => handleNav("/post-job")}
+              className="w-full flex items-center gap-2 py-2 px-3 hover:bg-purple-50 rounded-md"
+            >
+              <MdPostAdd /> Post
+            </button>
+          )}
           <button
             onClick={() => handleNav("/help")}
             className="w-full flex items-center gap-2 py-2 px-3 hover:bg-orange-50 rounded-md"
