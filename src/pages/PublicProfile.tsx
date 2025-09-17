@@ -14,6 +14,7 @@ import {
   Twitter,
   Github
 } from "lucide-react";
+React;
 
 interface UserProfile {
   name: string;
