@@ -10,7 +10,7 @@ import {
 } from "react-icons/fa";
 import { MdPostAdd } from "react-icons/md";
 import { IoMdNotificationsOutline } from "react-icons/io";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useUser } from "../context/UserContext";
 import { supabase } from "../lib/supabaseClient";
 
@@ -18,18 +18,22 @@ export default function AfterLoginNavbar() {
   const { profile, setProfile } = useUser();
   const [open, setOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [authUserType, setAuthUserType] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Remove redundant useEffect as profile is now set by Login/LoginRedirect
-  // useEffect(() => {
-  //   const fetchUserType = async () => {
-  //     const { data: { user }, error } = await supabase.auth.getUser();
-  //     if (user && !error) {
-  //       setProfile({ ...profile, user_type: user.user_metadata?.user_type });
-  //     }
-  //   };
-  //   fetchUserType();
-  // }, []);
+  // Ensure navbar reflects role immediately after registration (before context is populated)
+  useEffect(() => {
+    const fetchUserType = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const type = (user?.user_metadata as any)?.user_type ?? null;
+      if (type) setAuthUserType(type);
+    };
+    if (!profile?.user_type) {
+      fetchUserType();
+    }
+  }, [profile?.user_type]);
+
+  const effectiveUserType = profile?.user_type ?? authUserType;
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -65,7 +69,7 @@ export default function AfterLoginNavbar() {
           <FaHome className="text-xl mb-1" />
           Home
         </button>
-        {profile?.user_type !== "business" && (
+        {effectiveUserType !== "business" && (
           <button
             onClick={() => handleNav("/find-job")}
             className="flex flex-col items-center text-xs hover:text-green-600 p-2 rounded-lg hover:bg-green-50"
@@ -74,7 +78,7 @@ export default function AfterLoginNavbar() {
             Jobs
           </button>
         )}
-        {profile?.user_type === "business" && (
+        {effectiveUserType === "business" && (
           <button
             onClick={() => handleNav("/post-job")}
             className="flex flex-col items-center text-xs hover:text-purple-600 p-2 rounded-lg hover:bg-purple-50"
@@ -172,7 +176,7 @@ export default function AfterLoginNavbar() {
           >
             <FaHome /> Home
           </button>
-          {profile?.user_type !== "business" && (
+          {effectiveUserType !== "business" && (
             <button
               onClick={() => handleNav("/find-job")}
               className="w-full flex items-center gap-2 py-2 px-3 hover:bg-green-50 rounded-md"
@@ -180,7 +184,7 @@ export default function AfterLoginNavbar() {
               <FaBriefcase /> Jobs
             </button>
           )}
-          {profile?.user_type === "business" && (
+          {effectiveUserType === "business" && (
             <button
               onClick={() => handleNav("/post-job")}
               className="w-full flex items-center gap-2 py-2 px-3 hover:bg-purple-50 rounded-md"
