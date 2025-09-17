@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { 
@@ -6,7 +6,6 @@ import {
   Mail, 
   MapPin, 
   Globe, 
-  MessageCircle,
   Linkedin,
   Instagram,
   Facebook,
@@ -86,23 +85,7 @@ export default function PublicProfile() {
     fetchPublicProfile();
   }, [name]);
 
-  const handleWhatsAppClick = () => {
-    if (userProfile?.whatsapp) {
-      window.open(`https://wa.me/${userProfile.whatsapp.replace(/\D/g, '')}`, '_blank');
-    }
-  };
-
-  const handleEmailClick = () => {
-    if (userProfile?.email) {
-      window.location.href = `mailto:${userProfile.email}`;
-    }
-  };
-
-  const handlePhoneClick = () => {
-    if (userProfile?.mobile) {
-      window.location.href = `tel:${userProfile.mobile}`;
-    }
-  };
+  // Intentionally minimal public view: action handlers removed
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -129,14 +112,7 @@ export default function PublicProfile() {
     </div>
   );
 
-  const socialLinks = [
-    { key: 'linkedin', url: userProfile.linkedin, icon: Linkedin, color: 'text-blue-600', name: 'LinkedIn' },
-    { key: 'instagram', url: userProfile.instagram, icon: Instagram, color: 'text-pink-600', name: 'Instagram' },
-    { key: 'facebook', url: userProfile.facebook, icon: Facebook, color: 'text-blue-800', name: 'Facebook' },
-    { key: 'youtube', url: userProfile.youtube, icon: Youtube, color: 'text-red-600', name: 'YouTube' },
-    { key: 'twitter', url: userProfile.twitter, icon: Twitter, color: 'text-blue-400', name: 'Twitter' },
-    { key: 'github', url: userProfile.github, icon: Github, color: 'text-gray-800', name: 'GitHub' },
-  ].filter(link => link.url);
+  // Social links rendered inline below when present
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
