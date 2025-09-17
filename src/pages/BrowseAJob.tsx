@@ -26,12 +26,13 @@ interface Company {
 }
 
 export default function BrowseJob() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [companies, setCompanies] = useState<{ [key: number]: Company }>({});
   const [loading, setLoading] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
+  const [hasSearched, setHasSearched] = useState(false);
 
   // Set search term from URL query params
   useEffect(() => {
@@ -54,7 +55,16 @@ export default function BrowseJob() {
       const jobTypes = searchParams.get("job_types")?.split(",").filter(Boolean) || [];
       const locationFilter = searchParams.get("location") || "";
 
-      // STEP 1: Fast job query without joins - ✅ FIXED: Include ALL required fields
+      // If nothing provided, don't preload jobs; show hero UI
+      if (!searchQuery.trim() && !categoryQuery.trim() && jobTypes.length === 0 && !locationFilter.trim()) {
+        setJobs([]);
+        setCompanies({});
+        setTotalCount(0);
+        setLoading(false);
+        return;
+      }
+
+      // STEP 1: Fast job query without joins
       let jobQuery = supabase
         .from("Job_Posts")
         .select("id, profession, description, location, salary, experience, job_type, created_at, company_id")
@@ -124,12 +134,12 @@ export default function BrowseJob() {
     } catch (error) {
       console.error("❌ Fetch error:", error);
       
-      // ✅ FIXED: Ultra-simple fallback with ALL required fields
+      // Ultra-simple fallback
       try {
         console.log("🔄 Trying simple fallback...");
         const { data: fallbackData } = await supabase
           .from("Job_Posts")
-          .select("id, profession, description, location, salary, experience, job_type, created_at, company_id")
+          .select("id, profession, location, salary, job_type, created_at, company_id")
           .order("created_at", { ascending: false })
           .limit(10);
 
@@ -159,17 +169,22 @@ export default function BrowseJob() {
       const timeout = setTimeout(() => {
         const params = new URLSearchParams(searchParams);
         params.set("search", search);
-        window.history.pushState({}, "", `${window.location.pathname}?${params}`);
-      }, 500);
-
+        setSearchParams(params, { replace: false });
+        setHasSearched(true);
+      }, 300);
       return () => clearTimeout(timeout);
     }
-  }, [search]);
+  }, [search, searchParams, setSearchParams]);
 
   const handleSearch = () => {
     const params = new URLSearchParams(searchParams);
-    params.set("search", search);
-    window.history.pushState({}, "", `${window.location.pathname}?${params}`);
+    if (search.trim()) {
+      params.set("search", search.trim());
+    } else {
+      params.delete("search");
+    }
+    setSearchParams(params, { replace: false });
+    setHasSearched(true);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -257,8 +272,15 @@ export default function BrowseJob() {
             </div>
           </div>
 
-          {/* Job Results */}
+          {/* Job Results / Hero */}
           <div className="space-y-4">
+            {!hasSearched && jobs.length === 0 && !loading ? (
+              <div className="text-center py-12">
+                <h1 className="text-3xl font-bold text-gray-800 mb-2">Find Your Next Job or Freelance Project</h1>
+                <p className="text-gray-600 mb-6">✨ Instantly!</p>
+                {/* Categories teaser can go here if desired */}
+              </div>
+            ) : null}
             {loading ? (
               <div className="space-y-3">
                 {[...Array(3)].map((_, index) => (
@@ -303,16 +325,6 @@ export default function BrowseJob() {
                           <span className="mx-2">•</span>
                           <span>{formatDate(job.created_at)}</span>
                         </div>
-                        
-                        {/* ✅ ADDED: Show job description */}
-                        {job.description && (
-                          <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                            {job.description.length > 100 
-                              ? `${job.description.substring(0, 100)}...` 
-                              : job.description}
-                          </p>
-                        )}
-                        
                         <div className="flex items-center gap-3 text-sm">
                           <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
                             💰 {job.salary}
