@@ -1,4 +1,4 @@
-import React,{ useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import FilterSidebar from "../components/FilterSidebar";
 import AfterLoginNavbar from "../components/AfterLoginNavbar";
@@ -125,12 +125,12 @@ export default function BrowseJob() {
     } catch (error) {
       console.error("❌ Fetch error:", error);
       
-      // Ultra-simple fallback
+      // ✅ FIXED: Ultra-simple fallback with ALL required fields
       try {
         console.log("🔄 Trying simple fallback...");
         const { data: fallbackData } = await supabase
           .from("Job_Posts")
-          .select("id, profession, location, salary, job_type, created_at, company_id")
+          .select("id, profession, description, location, salary, experience, job_type, created_at, company_id")
           .order("created_at", { ascending: false })
           .limit(10);
 
@@ -173,9 +173,7 @@ export default function BrowseJob() {
     navigate(`/browse-job?search=${encodeURIComponent(q)}`);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") handleSearch();
-  };
+  // ✅ REMOVED: Unused handleKeyPress function
 
   const getCompanyName = (companyId: number) => {
     return companies[companyId]?.name || "Company Name N/A";
@@ -331,6 +329,16 @@ export default function BrowseJob() {
                           <span className="mx-2">•</span>
                           <span>{formatDate(job.created_at)}</span>
                         </div>
+                        
+                        {/* ✅ ADDED: Display job description if available */}
+                        {job.description && (
+                          <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                            {job.description.length > 100 
+                              ? `${job.description.substring(0, 100)}...` 
+                              : job.description}
+                          </p>
+                        )}
+                        
                         <div className="flex items-center gap-3 text-sm">
                           <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
                             💰 {job.salary}
