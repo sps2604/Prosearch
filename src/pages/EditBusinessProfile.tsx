@@ -1,0 +1,565 @@
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import AfterLoginNavbar from "../components/AfterLoginNavbar";
+import { FaUser, FaAddressBook, FaLink, FaUpload, FaTimes } from "react-icons/fa";
+import { supabase } from "../lib/supabaseClient";
+import { useUser } from "../context/UserContext";
+
+type Tab = "personal" | "contact" | "links";
+
+export default function EditBusinessProfile() {
+  const [activeTab, setActiveTab] = useState<Tab>("personal");
+  const [uploadMode, setUploadMode] = useState<"url" | "upload">("url");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>("");
+  const [uploading, setUploading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const { profile, setProfile } = useUser();
+
+  const [formData, setFormData] = useState({
+    business_name: "",
+    industry: "",
+    logo_url: "",
+    website: "",
+    summary: "",
+    mobile: "",
+    whatsapp: "",
+    email: "",
+    linkedin: "",
+    instagram: "",
+    facebook: "",
+    youtube: "",
+    twitter: "",
+    github: "",
+    google_my_business: "",
+  });
+
+  // ✅ Load existing business profile data
+  useEffect(() => {
+    const loadExistingBusinessProfile = async () => {
+      if (!profile || profile.user_type !== "business") {
+        navigate("/business-profile");
+        return;
+      }
+
+      try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user) {
+          navigate("/login");
+          return;
+        }
+
+        // Fetch existing business profile data
+        const { data: businessData, error: businessError } = await supabase
+          .from("businesses")
+          .select("*")
+          .eq("user_id", user.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (businessError) {
+          console.error("Error loading business profile:", businessError);
+          alert("Error loading business profile data");
+          navigate("/business-profile");
+          return;
+        }
+
+        if (businessData?.[0]) {
+          const data = businessData[0];
+          
+          // ✅ Pre-populate form with existing data
+          setFormData({
+            business_name: data.business_name || "",
+            industry: data.industry || "",
+            logo_url: data.logo_url || "",
+            website: data.website || "",
+            summary: data.summary || "",
+            mobile: data.mobile || "",
+            whatsapp: data.whatsapp || "",
+            email: data.email || "",
+            linkedin: data.linkedin || "",
+            instagram: data.instagram || "",
+            facebook: data.facebook || "",
+            youtube: data.youtube || "",
+            twitter: data.twitter || "",
+            github: data.github || "",
+            google_my_business: data.google_my_business || "",
+          });
+
+          // Set upload mode based on existing data
+          if (data.logo_url) {
+            setUploadMode("url");
+          }
+        } else {
+          alert("No business profile found to edit");
+          navigate("/business-profile");
+        }
+      } catch (err) {
+        console.error("Unexpected error:", err);
+        alert("Error loading business profile");
+        navigate("/business-profile");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadExistingBusinessProfile();
+  }, [profile, navigate, setProfile]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-purple-100">
+        <p className="text-lg text-gray-700">Loading business profile data...</p>
+      </div>
+    );
+  }
+
+  const handleChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        alert('Please select a valid image file (JPEG, PNG, or WebP)');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB');
+        return;
+      }
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPreviewUrl(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeSelectedFile = () => {
+    setSelectedFile(null);
+    setPreviewUrl("");
+    const fileInput = document.getElementById('business-logo') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  };
+
+  const uploadBusinessLogo = async (userId: string): Promise<string | null> => {
+    if (!selectedFile) return null;
+    
+    try {
+      console.log('Starting business logo upload for user:', userId);
+      
+      const fileExt = selectedFile.name.split('.').pop();
+      const fileName = `${userId}-business-${Date.now()}.${fileExt}`;
+      const filePath = `business-logos/${fileName}`;
+
+      console.log('Uploading to path:', filePath);
+
+      const { data, error } = await supabase.storage
+        .from('profiles')
+        .upload(filePath, selectedFile, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) {
+        console.error('Upload error:', error);
+        throw new Error(`Upload failed: ${error.message}`);
+      }
+
+      console.log('Upload successful:', data);
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('profiles')
+        .getPublicUrl(filePath);
+
+      console.log('Public URL generated:', publicUrl);
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading business logo:', error);
+      throw error;
+    }
+  };
+
+  const goNext = () => {
+    if (activeTab === "personal") setActiveTab("contact");
+    else if (activeTab === "contact") setActiveTab("links");
+  };
+
+  const goPrevious = () => {
+    if (activeTab === "links") setActiveTab("contact");
+    else if (activeTab === "contact") setActiveTab("personal");
+  };
+
+  // ✅ UPDATE instead of INSERT
+  const handleSubmit = async () => {
+    try {
+      console.log('Starting business profile update...');
+      setUploading(true);
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        console.error("User fetch error:", userError);
+        alert("You must be logged in to edit business profile.");
+        return;
+      }
+
+      console.log('User authenticated:', user.id);
+
+      let logoImageUrl: string | null = formData.logo_url.trim() || null;
+
+      if (uploadMode === "upload" && selectedFile) {
+        console.log('Upload mode: file upload');
+        try {
+          const uploadedUrl = await uploadBusinessLogo(user.id);
+          if (uploadedUrl) {
+            logoImageUrl = uploadedUrl;
+            console.log('Business logo uploaded successfully:', uploadedUrl);
+          } else {
+            console.error('Upload returned null');
+            alert("Failed to upload business logo. Please try again.");
+            return;
+          }
+        } catch (error) {
+          console.error("Upload error:", error);
+          alert(`Failed to upload business logo: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          return;
+        }
+      } else if (uploadMode === "upload" && !selectedFile) {
+        logoImageUrl = null;
+        console.log('Upload mode but no file selected');
+      } else {
+        console.log('URL mode:', logoImageUrl);
+      }
+
+      console.log('Updating business profile in database...');
+      
+      // ✅ UPDATE existing business profile instead of INSERT
+      const { error } = await supabase
+        .from("businesses")
+        .update({
+          business_name: formData.business_name,
+          industry: formData.industry,
+          logo_url: logoImageUrl,
+          website: formData.website,
+          summary: formData.summary,
+          mobile: formData.mobile,
+          whatsapp: formData.whatsapp,
+          email: formData.email,
+          linkedin: formData.linkedin,
+          instagram: formData.instagram,
+          facebook: formData.facebook,
+          youtube: formData.youtube,
+          twitter: formData.twitter,
+          github: formData.github,
+          google_my_business: formData.google_my_business,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Database update error:", error);
+        alert(`Failed to update business profile: ${error.message}`);
+      } else {
+        console.log('Business profile updated successfully');
+        
+        // ✅ Update UserContext
+        setProfile({
+          id: user.id,
+          business_name: formData.business_name,
+          email: user.email || formData.email,
+          user_type: "business",
+        });
+        
+        alert("Business profile updated successfully!");
+        navigate("/business-profile");
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      alert(`An unexpected error occurred: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      console.log('Setting uploading to false');
+      setUploading(false);
+    }
+  };
+
+  const tabClass = (tab: Tab) =>
+    `flex items-center gap-2 px-6 py-2 rounded-t-xl cursor-pointer transition-all font-medium
+     ${activeTab === tab ? "bg-blue-600 text-white shadow-lg" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`;
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-100">
+      <AfterLoginNavbar />
+
+      {/* Tabs */}
+      <div className="flex justify-center mt-6 space-x-2">
+        <div className={tabClass("personal")} onClick={() => setActiveTab("personal")}>
+          <FaUser /> Business Info
+        </div>
+        <div className={tabClass("contact")} onClick={() => setActiveTab("contact")}>
+          <FaAddressBook /> Contact
+        </div>
+        <div className={tabClass("links")} onClick={() => setActiveTab("links")}>
+          <FaLink /> Links
+        </div>
+      </div>
+
+      {/* Form Card */}
+      <div className="bg-white shadow-xl max-w-2xl mx-auto mt-8 rounded-2xl p-8 border border-gray-100">
+        <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">
+          Edit Business Profile
+        </h2>
+
+        {/* Business Info */}
+        {activeTab === "personal" && (
+          <div className="space-y-5">
+            <div>
+              <label className="block font-semibold text-gray-700 mb-1">Business Name:</label>
+              <input
+                value={formData.business_name}
+                onChange={(e) => handleChange("business_name", e.target.value)}
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm
+                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                placeholder="Enter your business name"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-gray-700 mb-1">Industry:</label>
+              <input
+                value={formData.industry}
+                onChange={(e) => handleChange("industry", e.target.value)}
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
+                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                placeholder="e.g. Technology, Food & Beverage, Consulting"
+              />
+            </div>
+
+            {/* Business Logo Upload Section */}
+            <div>
+              <label className="block font-semibold text-gray-700 mb-3">Business Logo:</label>
+              
+              {/* Upload Mode Toggle */}
+              <div className="flex gap-4 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setUploadMode("upload")}
+                  className={`px-4 py-2 rounded-lg transition-colors ${
+                    uploadMode === "upload" 
+                      ? "bg-blue-500 text-white" 
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}
+                >
+                  <FaUpload className="inline mr-2" />
+                  Upload Logo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUploadMode("url")}
+                  className={`px-4 py-2 rounded-lg transition-colors ${
+                    uploadMode === "url" 
+                      ? "bg-blue-500 text-white" 
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}
+                >
+                  <FaLink className="inline mr-2" />
+                  Use URL
+                </button>
+              </div>
+
+              {/* Upload Mode */}
+              {uploadMode === "upload" && (
+                <div className="space-y-4">
+                  {!selectedFile ? (
+                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 transition-colors">
+                      <input
+                        id="business-logo"
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/webp"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                      />
+                      <label htmlFor="business-logo" className="cursor-pointer">
+                        <FaUpload className="mx-auto text-4xl text-gray-400 mb-4" />
+                        <p className="text-gray-600 mb-2">Click to upload business logo</p>
+                        <p className="text-sm text-gray-400">JPEG, PNG, WebP (Max 5MB)</p>
+                      </label>
+                    </div>
+                  ) : selectedFile && previewUrl ? (
+                    <div className="relative inline-block">
+                      <img
+                        src={previewUrl}
+                        alt="Preview"
+                        className="w-32 h-32 object-cover rounded-xl border-4 border-white shadow-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={removeSelectedFile}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                      >
+                        <FaTimes size={12} />
+                      </button>
+                      <p className="text-sm text-gray-600 mt-2">{selectedFile.name}</p>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+
+              {/* URL Mode */}
+              {uploadMode === "url" && (
+                <input
+                  value={formData.logo_url}
+                  onChange={(e) => handleChange("logo_url", e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
+                     focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                  placeholder="Enter logo image URL"
+                />
+              )}
+            </div>
+
+            <div>
+              <label className="block font-semibold text-gray-700 mb-1">Website:</label>
+              <input
+                value={formData.website}
+                onChange={(e) => handleChange("website", e.target.value)}
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
+                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                placeholder="e.g. https://www.yourbusiness.com"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-gray-700 mb-1">Business Summary:</label>
+              <textarea
+                value={formData.summary}
+                onChange={(e) => handleChange("summary", e.target.value)}
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm h-28 focus:outline-none
+                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                placeholder="Brief about your business, services and mission"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Contact Details */}
+        {activeTab === "contact" && (
+          <div className="space-y-5">
+            <div>
+              <label className="block font-semibold text-gray-700 mb-1">Mobile:</label>
+              <input
+                value={formData.mobile}
+                onChange={(e) => handleChange("mobile", e.target.value)}
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
+                           focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                placeholder="Enter contact number"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-gray-700 mb-1">WhatsApp:</label>
+              <input
+                value={formData.whatsapp}
+                onChange={(e) => handleChange("whatsapp", e.target.value)}
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
+                           focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                placeholder="Enter active WhatsApp number"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-gray-700 mb-1">Email:</label>
+              <input
+                value={formData.email}
+                onChange={(e) => handleChange("email", e.target.value)}
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
+                           focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                placeholder="Enter business email"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Accounts & Links */}
+        {activeTab === "links" && (
+          <div className="space-y-5">
+            {[
+              ["linkedin", "LinkedIn"],
+              ["instagram", "Instagram"],
+              ["facebook", "Facebook"],
+              ["youtube", "YouTube"],
+              ["twitter", "Twitter"],
+              ["github", "GitHub"],
+              ["google_my_business", "Google My Business Link"],
+            ].map(([field, label], index) => (
+              <div key={index}>
+                <label className="block font-semibold text-gray-700 mb-1">{label}:</label>
+                <input
+                  value={(formData as any)[field]}
+                  onChange={(e) => handleChange(field, e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none
+                             focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                  placeholder={`Enter ${label} link`}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Buttons */}
+        <div className="flex justify-between mt-8">
+          {activeTab !== "personal" && (
+            <button
+              onClick={goPrevious}
+              disabled={uploading}
+              className="border border-gray-400 text-gray-700 px-6 py-2 rounded-xl hover:bg-gray-100 transition disabled:opacity-50"
+            >
+              Previous
+            </button>
+          )}
+
+          {/* ✅ Add Cancel Button */}
+          <button
+            onClick={() => navigate("/business-profile")}
+            disabled={uploading}
+            className="border border-red-400 text-red-700 px-6 py-2 rounded-xl hover:bg-red-50 transition disabled:opacity-50"
+          >
+            Cancel
+          </button>
+
+          {activeTab !== "links" ? (
+            <button
+              onClick={goNext}
+              disabled={uploading}
+              className="bg-blue-600 text-white px-6 py-2 rounded-xl shadow-md hover:bg-blue-700 transition ml-auto disabled:opacity-50"
+            >
+              Next
+            </button>
+          ) : (
+            <button
+              onClick={handleSubmit}
+              disabled={uploading}
+              className="bg-green-600 text-white px-6 py-2 rounded-xl shadow-md hover:bg-green-700 transition ml-auto disabled:opacity-50 flex items-center gap-2"
+            >
+              {uploading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Updating...
+                </>
+              ) : (
+                "Update Profile"
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

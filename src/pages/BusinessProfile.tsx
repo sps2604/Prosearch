@@ -2,10 +2,10 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import AfterLoginNavbar from "../components/AfterLoginNavbar";
-import { Eye, Download } from "lucide-react";
+import { Eye, Download, Edit } from "lucide-react"; // ✅ Added Edit import
 import { jsPDF } from "jspdf";
 import { toPng } from "html-to-image";
-import { useUser } from "../context/UserContext"; // Import useUser
+import { useUser } from "../context/UserContext";
 
 interface BusinessProfileData {
   id: string;
@@ -30,7 +30,7 @@ interface BusinessProfileData {
 }
 
 export default function BusinessProfilePage() {
-  const { profile, setProfile } = useUser(); // ✅ ADDED setProfile
+  const { profile, setProfile } = useUser();
   const [businessProfile, setBusinessProfile] = useState<BusinessProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +51,7 @@ export default function BusinessProfilePage() {
             const { data: businessProfileData, error: businessProfileError } = await supabase
               .from("businesses")
               .select("*")
-              .eq("user_id", profile.id) // ✅ FIXED: Use user_id instead of id
+              .eq("user_id", profile.id)
               .order('created_at', { ascending: false })
               .limit(1);
 
@@ -61,7 +61,7 @@ export default function BusinessProfilePage() {
               setError("Error fetching business profile: " + businessProfileError.message);
               console.error("BusinessProfilePage: Error fetching business profile:", businessProfileError);
             } else {
-              setBusinessProfile(businessProfileData?.[0] as BusinessProfileData || null); // ✅ FIXED: Array access
+              setBusinessProfile(businessProfileData?.[0] as BusinessProfileData || null);
               console.log("BusinessProfilePage: Business profile data set successfully.");
             }
           } catch (err) {
@@ -86,7 +86,7 @@ export default function BusinessProfilePage() {
       setLoading(false);
       navigate("/login");
     }
-  }, [profile, navigate, setProfile]); // ✅ ADDED setProfile to dependencies
+  }, [profile, navigate, setProfile]);
 
   const handleViewCard = () => navigate("/business-profile-card");
 
@@ -98,7 +98,7 @@ export default function BusinessProfilePage() {
     try {
       const dataUrl = await toPng(cardRef.current, {
         cacheBust: true,
-        filter: (node) => !(node.tagName === "IMG"), // skip <img> tags
+        filter: (node) => !(node.tagName === "IMG"),
       });
 
       const pdf = new jsPDF("p", "mm", "a4");
@@ -179,6 +179,14 @@ export default function BusinessProfilePage() {
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full md:w-auto">
+              {/* ✅ ADDED EDIT BUTTON */}
+              <button
+                onClick={() => navigate("/edit-business-profile")}
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm"
+              >
+                <Edit size={16} />
+                Edit
+              </button>
               <button
                 onClick={handleViewCard}
                 className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"

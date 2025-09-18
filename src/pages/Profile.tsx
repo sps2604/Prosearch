@@ -2,10 +2,10 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import AfterLoginNavbar from "../components/AfterLoginNavbar";
-import { Eye, Download } from "lucide-react";
+import { Eye, Download, Edit } from "lucide-react"; // ✅ Added Edit import
 import { jsPDF } from "jspdf";
 import { toPng } from "html-to-image";
-import { useUser } from "../context/UserContext"; // Import useUser
+import { useUser } from "../context/UserContext";
 
 interface UserProfile {
   name: string;
@@ -30,10 +30,8 @@ interface UserProfile {
 }
 
 export default function ProfilePage() {
-  // Consume profile from global UserContext
   const { profile } = useUser();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  // Set loading initially based on whether profile is already in context
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -41,24 +39,20 @@ export default function ProfilePage() {
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // If profile is already in context, set loading to false and populate userProfile
     if (profile) {
       if (profile.user_type === "professional") {
-        // Fetch detailed professional profile from 'user_profiles' table
         const fetchProfessionalProfile = async () => {
           try {
-            // ✅ FIXED: Removed .single() and added .limit(1)
             const { data: userProfileData, error: userProfileError } = await supabase
               .from("user_profiles")
               .select("*")
-              .eq("user_id", profile.id) // Use profile.id from context
+              .eq("user_id", profile.id)
               .order('created_at', { ascending: false })
-              .limit(1); // ✅ Changed from .single()
+              .limit(1);
 
             if (userProfileError) {
               setError("Error fetching professional profile: " + userProfileError.message);
             } else {
-              // ✅ FIXED: Access data as array
               setUserProfile(userProfileData?.[0] as UserProfile || null);
             }
           } catch (err) {
@@ -69,21 +63,16 @@ export default function ProfilePage() {
         };
         fetchProfessionalProfile();
       } else if (profile.user_type === "business") {
-        // Redirect businessmen to their specific profile page
         navigate("/business-profile");
       } else {
-        // Fallback for unexpected user types or if user_type is missing
         setError("Invalid or missing user type.");
         setLoading(false);
       }
     } else {
-      // If profile is not in context, it means user is not logged in or context is not yet loaded
-      // Redirect to login or keep loading if Auth state is still resolving.
-      // A more robust solution might involve a `ProtectedRoute` or checking `supabase.auth.getSession()` here too.
-      setLoading(false); // If profile is null, assume not authenticated for this page's purpose
+      setLoading(false);
       navigate("/login");
     }
-  }, [profile, navigate]); // Rerun when profile in context changes or navigate function changes
+  }, [profile, navigate]);
 
   const handleViewCard = () => navigate("/profile-card");
 
@@ -95,7 +84,7 @@ export default function ProfilePage() {
     try {
       const dataUrl = await toPng(cardRef.current, {
         cacheBust: true,
-        filter: (node) => !(node.tagName === "IMG"), // skip <img> tags
+        filter: (node) => !(node.tagName === "IMG"),
       });
 
       const pdf = new jsPDF("p", "mm", "a4");
@@ -172,6 +161,14 @@ export default function ProfilePage() {
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full md:w-auto">
+              {/* ✅ ADDED EDIT BUTTON */}
+              <button
+                onClick={() => navigate("/edit-profile")}
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm"
+              >
+                <Edit size={16} />
+                Edit
+              </button>
               <button
                 onClick={handleViewCard}
                 className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"

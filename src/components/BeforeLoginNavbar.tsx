@@ -16,6 +16,11 @@ export default function BeforeLoginNavbar() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
+  const handleNav = (path: string) => {
+    navigate(path);
+    setMenuOpen(false);
+  };
+
   return (
     <nav className="flex justify-between items-center px-4 sm:px-6 py-3 bg-white shadow-md sticky top-0 z-50">
       {/* Logo */}
@@ -23,56 +28,61 @@ export default function BeforeLoginNavbar() {
         <img src={Logo} alt="Logo" className="h-10 w-auto object-contain" />
         <button
           onClick={() => navigate("/")}
-          className="font-semibold text-base sm:text-lg hover:text-blue-600 transition-colors"
+          className="font-bold text-lg sm:text-xl hover:text-blue-600 transition-colors duration-200"
         >
           Professional Search
         </button>
       </div>
 
       {/* Desktop Menu */}
-      <div className="hidden md:flex items-center gap-6">
-        {/* Links */}
+      <div className="hidden md:flex items-center gap-4">
+        {/* Navigation Links */}
         <button
-          onClick={() => navigate("/")}
-          className="flex flex-col items-center text-sm hover:text-blue-600 transition-colors duration-200 p-2 rounded-lg hover:bg-blue-50"
+          onClick={() => handleNav("/")}
+          className="flex flex-col items-center text-xs hover:text-blue-600 transition-colors duration-200 p-3 rounded-lg hover:bg-blue-50"
         >
           <FaHome className="text-lg mb-1" />
           Home
         </button>
+        
+        {/* ✅ Browse Jobs - Redirects to login */}
         <button
-          onClick={() => navigate("/browse-jobs")}
-          className="flex flex-col items-center text-sm hover:text-green-600 transition-colors duration-200 p-2 rounded-lg hover:bg-green-50"
+          onClick={() => handleNav("/login")}
+          className="flex flex-col items-center text-xs hover:text-green-600 transition-colors duration-200 p-3 rounded-lg hover:bg-green-50"
         >
           <FaBriefcase className="text-lg mb-1" />
-          Browse Jobs
+          Jobs
         </button>
+        
+        {/* ✅ Post Job - Redirects to login */}
         <button
-          onClick={() => navigate("/login")}
-          className="flex flex-col items-center text-sm hover:text-purple-600 transition-colors duration-200 p-2 rounded-lg hover:bg-purple-50"
+          onClick={() => handleNav("/login")}
+          className="flex flex-col items-center text-xs hover:text-purple-600 transition-colors duration-200 p-3 rounded-lg hover:bg-purple-50"
         >
           <MdPostAdd className="text-lg mb-1" />
-          Post Job
+          Post
         </button>
+        
         <button
-          onClick={() => navigate("/help")}
-          className="flex flex-col items-center text-sm hover:text-orange-600 transition-colors duration-200 p-2 rounded-lg hover:bg-orange-50"
+          onClick={() => handleNav("/help")}
+          className="flex flex-col items-center text-xs hover:text-orange-600 transition-colors duration-200 p-3 rounded-lg hover:bg-orange-50"
         >
           <FaRegQuestionCircle className="text-lg mb-1" />
           Help
         </button>
 
-        {/* Auth */}
-        <div className="flex items-center gap-3 ml-3 border-l border-gray-300 pl-3">
+        {/* Auth Buttons */}
+        <div className="flex items-center gap-3 ml-4 pl-4 border-l border-gray-300">
           <button
-            onClick={() => navigate("/login")}
-            className="flex items-center gap-2 px-3 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all duration-200"
+            onClick={() => handleNav("/login")}
+            className="flex items-center gap-2 px-4 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all duration-200"
           >
             <FaSignInAlt className="text-sm" />
             <span className="text-sm font-medium">Login</span>
           </button>
           <button
-            onClick={() => navigate("/register")}
-            className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200"
+            onClick={() => handleNav("/register")}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200"
           >
             <FaUserPlus className="text-sm" />
             <span className="text-sm font-medium">Sign Up</span>
@@ -90,62 +100,54 @@ export default function BeforeLoginNavbar() {
 
       {/* Mobile Menu Dropdown */}
       {menuOpen && (
-        <div className="absolute top-full left-0 w-full bg-white shadow-md flex flex-col items-start p-4 md:hidden">
+        <div className="absolute top-full left-0 w-full bg-white shadow-md flex flex-col items-start p-4 md:hidden border-t border-gray-100">
+          {/* Navigation Links */}
           <button
-            onClick={() => {
-              navigate("/");
-              setMenuOpen(false);
-            }}
-            className="w-full flex items-center gap-2 py-2 px-3 hover:bg-blue-50 rounded-md"
+            onClick={() => handleNav("/")}
+            className="w-full flex items-center gap-3 py-3 px-3 hover:bg-blue-50 rounded-md transition-colors"
           >
-            <FaHome /> Home
+            <FaHome className="text-lg" /> 
+            <span>Home</span>
           </button>
+          
+          {/* ✅ Browse Jobs - Redirects to login */}
           <button
-            onClick={() => {
-              navigate("/browse-jobs");
-              setMenuOpen(false);
-            }}
-            className="w-full flex items-center gap-2 py-2 px-3 hover:bg-green-50 rounded-md"
+            onClick={() => handleNav("/login")}
+            className="w-full flex items-center gap-3 py-3 px-3 hover:bg-green-50 rounded-md transition-colors"
           >
-            <FaBriefcase /> Browse Jobs
+            <FaBriefcase className="text-lg" /> 
+            <span>Jobs</span>
           </button>
+          
+          {/* ✅ Post Job - Redirects to login */}
           <button
-            onClick={() => {
-              navigate("/login");
-              setMenuOpen(false);
-            }}
-            className="w-full flex items-center gap-2 py-2 px-3 hover:bg-purple-50 rounded-md"
+            onClick={() => handleNav("/login")}
+            className="w-full flex items-center gap-3 py-3 px-3 hover:bg-purple-50 rounded-md transition-colors"
           >
-            <MdPostAdd /> Post Job
+            <MdPostAdd className="text-lg" /> 
+            <span>Post</span>
           </button>
+          
           <button
-            onClick={() => {
-              navigate("/help");
-              setMenuOpen(false);
-            }}
-            className="w-full flex items-center gap-2 py-2 px-3 hover:bg-orange-50 rounded-md"
+            onClick={() => handleNav("/help")}
+            className="w-full flex items-center gap-3 py-3 px-3 hover:bg-orange-50 rounded-md transition-colors"
           >
-            <FaRegQuestionCircle /> Help
+            <FaRegQuestionCircle className="text-lg" /> 
+            <span>Help</span>
           </button>
 
           {/* Auth buttons on mobile */}
-          <div className="w-full flex flex-col gap-2 mt-3">
+          <div className="w-full flex flex-col gap-3 mt-4 pt-4 border-t border-gray-200">
             <button
-              onClick={() => {
-                navigate("/login");
-                setMenuOpen(false);
-              }}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all duration-200"
+              onClick={() => handleNav("/login")}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all duration-200"
             >
               <FaSignInAlt className="text-sm" />
               <span className="text-sm font-medium">Login</span>
             </button>
             <button
-              onClick={() => {
-                navigate("/register");
-                setMenuOpen(false);
-              }}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200"
+              onClick={() => handleNav("/register")}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200"
             >
               <FaUserPlus className="text-sm" />
               <span className="text-sm font-medium">Sign Up</span>
