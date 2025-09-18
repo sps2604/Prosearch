@@ -101,33 +101,30 @@ export default function RegisterProfessional() {
   };
 
   // Handle Google Sign up
-  // ✅ UPDATED Google OAuth function in RegisterProfessional.tsx
-const handleGoogleRegister = async () => {
-  setError(null);
-  setMessage(null);
-  
-  try {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        // ✅ FIXED: Pass user_type in the redirect URL
-        redirectTo: `${window.location.origin}/login-redirect?user_type=professional`,
-        queryParams: {
-          prompt: "select_account",
+  const handleGoogleRegister = async () => {
+    setError(null);
+    setMessage(null);
+    
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/login-redirect?user_type=professional`,
+          queryParams: {
+            prompt: "select_account",
+          },
         },
-      },
-    });
+      });
 
-    if (error) {
-      console.error('Google OAuth Error:', error);
-      setError(error.message);
+      if (error) {
+        console.error('Google OAuth Error:', error);
+        setError(error.message);
+      }
+    } catch (err: any) {
+      console.error('Google registration error:', err);
+      setError("Failed to register with Google");
     }
-  } catch (err: any) {
-    console.error('Google registration error:', err);
-    setError("Failed to register with Google");
-  }
-};
-
+  };
 
   // Handle Magic Link Register
   const handleMagicLinkRegister = async () => {
@@ -170,34 +167,34 @@ const handleGoogleRegister = async () => {
       <Navbar />
 
       {/* Page Content */}
-      <div className="flex flex-1 items-center justify-center">
-        <div className="container flex flex-col md:flex-row items-center max-w-6xl gap-8 p-8">
-          {/* Left Illustration */}
-          <div className="flex-1 flex justify-center">
+      <div className="flex flex-1 items-center justify-center px-4 py-6 sm:py-8">
+        <div className="container flex flex-col lg:flex-row items-center max-w-6xl gap-8 lg:gap-12">
+          {/* Left Illustration - Hidden on Mobile */}
+          <div className="hidden lg:flex flex-1 justify-center">
             <img
               src={registerIllustration}
               alt="Professional Registration"
-              className="w-130"
+              className="w-130 max-w-lg"
             />
           </div>
 
-          {/* Right Form */}
-          <div className="flex-1 bg-white rounded-xl shadow-md p-8 max-w-md">
+          {/* Right Form - Full width on mobile */}
+          <div className="w-full lg:flex-1 bg-white rounded-xl shadow-lg p-6 sm:p-8 max-w-md lg:max-w-lg">
             {/* Header with Back Button */}
-            <div className="flex items-center gap-3 mb-6">
+            <div className="flex items-center gap-2 sm:gap-3 mb-6">
               <button
                 onClick={() => navigate("/register")}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors touch-manipulation"
               >
-                <ArrowLeft size={20} className="text-gray-600" />
+                <ArrowLeft size={18} className="sm:w-5 sm:h-5 text-gray-600" />
               </button>
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-blue-100 rounded-full">
-                  <User size={20} className="text-blue-600" />
+                <div className="p-1.5 sm:p-2 bg-blue-100 rounded-full">
+                  <User size={18} className="sm:w-5 sm:h-5 text-blue-600" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold">Professional Registration</h2>
-                  <p className="text-sm text-gray-600">Create your professional profile</p>
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Professional Registration</h2>
+                  <p className="text-xs sm:text-sm text-gray-600">Create your professional profile</p>
                 </div>
               </div>
             </div>
@@ -209,7 +206,7 @@ const handleGoogleRegister = async () => {
                 name="firstName"
                 type="text"
                 placeholder="Enter Your First Name"
-                className="w-full border border-gray-300 rounded-md px-3 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="w-full border border-gray-300 rounded-md px-3 py-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors touch-manipulation"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 required
@@ -221,7 +218,7 @@ const handleGoogleRegister = async () => {
                 name="lastName"
                 type="text"
                 placeholder="Enter Your Last Name"
-                className="w-full border border-gray-300 rounded-md px-3 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="w-full border border-gray-300 rounded-md px-3 py-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors touch-manipulation"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 required
@@ -233,7 +230,7 @@ const handleGoogleRegister = async () => {
                 name="email"
                 type="email"
                 placeholder="Enter Your Email"
-                className="w-full border border-gray-300 rounded-md px-3 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="w-full border border-gray-300 rounded-md px-3 py-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors touch-manipulation"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -245,7 +242,7 @@ const handleGoogleRegister = async () => {
                 name="password"
                 type="password"
                 placeholder="Create Password (min 6 characters)"
-                className="w-full border border-gray-300 rounded-md px-3 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="w-full border border-gray-300 rounded-md px-3 py-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors touch-manipulation"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -255,7 +252,7 @@ const handleGoogleRegister = async () => {
               {/* Primary Register Button */}
               <button
                 type="submit"
-                className="w-full py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="w-full py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 active:bg-blue-800 transition-colors duration-200 font-medium disabled:bg-gray-400 disabled:cursor-not-allowed text-sm sm:text-base touch-manipulation"
                 disabled={loading}
               >
                 {loading ? "Creating Account..." : "Create Professional Account"}
@@ -275,9 +272,9 @@ const handleGoogleRegister = async () => {
               <button
                 type="button"
                 onClick={handleGoogleRegister}
-                className="w-full flex items-center justify-center gap-2 border border-gray-300 rounded-md py-3 transition duration-200 hover:bg-gray-50 hover:border-gray-400"
+                className="w-full flex items-center justify-center gap-2 border border-gray-300 rounded-md py-3 transition duration-200 hover:bg-gray-50 hover:border-gray-400 active:bg-gray-100 text-sm sm:text-base touch-manipulation"
               >
-                <img src={googleIcon} alt="Google" className="w-5" />
+                <img src={googleIcon} alt="Google" className="w-4 sm:w-5" />
                 Continue with Google
               </button>
 
@@ -285,9 +282,9 @@ const handleGoogleRegister = async () => {
               <button
                 type="button"
                 onClick={handleMagicLinkRegister}
-                className="w-full flex items-center justify-center gap-2 border border-gray-300 rounded-md py-3 transition duration-200 hover:bg-gray-50 hover:border-gray-400"
+                className="w-full flex items-center justify-center gap-2 border border-gray-300 rounded-md py-3 transition duration-200 hover:bg-gray-50 hover:border-gray-400 active:bg-gray-100 text-sm sm:text-base touch-manipulation"
               >
-                <img src={emailIcon} alt="Email" className="w-5" />
+                <img src={emailIcon} alt="Email" className="w-4 sm:w-5" />
                 Sign in with Magic Link
               </button>
 
@@ -303,13 +300,13 @@ const handleGoogleRegister = async () => {
                 </div>
               )}
 
-              <p className="text-xs text-gray-500 text-center">
+              <p className="text-xs text-gray-500 text-center px-2">
                 By continuing, you agree to our Terms of Service and Privacy Policy
               </p>
 
               <p className="text-sm text-center">
                 Already have an account?{" "}
-                <a href="/login" className="text-blue-500 hover:underline">
+                <a href="/login" className="text-blue-500 hover:text-blue-600 hover:underline font-medium transition-colors">
                   Login
                 </a>
               </p>
