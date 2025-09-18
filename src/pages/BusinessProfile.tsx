@@ -29,7 +29,7 @@ interface BusinessProfileData {
 
 export default function BusinessProfilePage() {
   // Consume profile from global UserContext
-  const { profile } = useUser();
+  const { profile, setProfile } = useUser(); // ✅ Add setProfile
   const [businessProfile, setBusinessProfile] = useState<BusinessProfileData | null>(null);
   // Set loading initially based on whether profile is already in context
   const [loading, setLoading] = useState(true);
@@ -38,59 +38,104 @@ export default function BusinessProfilePage() {
   const navigate = useNavigate();
   const cardRef = useRef<HTMLDivElement>(null);
 
+  // ✅ REPLACE your useEffect with this robust version:
   useEffect(() => {
-    console.log("BusinessProfilePage: useEffect triggered.");
-    console.log("BusinessProfilePage: Profile from context:", profile);
+    console.log("🔍 BusinessProfile Debug:");
+    console.log("Current profile from context:", profile);
+    console.log("User type:", profile?.user_type);
 
-    // If profile is already in context, set loading to false and populate businessProfile
-    if (profile) {
-      if (profile.user_type === "business") {
-        console.log("BusinessProfilePage: User is business type. Fetching detailed profile...");
-        // Fetch detailed business profile from 'businesses' table
-        const fetchBusinessProfileData = async () => {
-          try {
-            console.log("BusinessProfilePage: Fetching business profile for ID:", profile.id);
-            // ✅ FIXED: Removed .single() and added .limit(1)
-            const { data: businessProfileData, error: businessProfileError } = await supabase
-              .from("businesses")
-              .select("*")
-              .eq("id", profile.id) // Use profile.id from context
-              .order('created_at', { ascending: false })
-              .limit(1); // ✅ Changed from .single()
+    const loadBusinessProfile = async () => {
+      try {
+        // Get current user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user) {
+          console.error("No authenticated user:", userError);
+          navigate("/login");
+          return;
+        }
 
-            console.log("BusinessProfilePage: Supabase response:", { data: businessProfileData, error: businessProfileError });
+        // ✅ PRIORITY 1: Check if profile context has business type
+        if (profile?.user_type === "business") {
+          console.log("✅ User is business type from context, fetching profile data...");
+          
+          // Fetch business profile data
+          const { data: businessData, error: businessError } = await supabase
+            .from("businesses")
+            .select("*")
+            .eq("id", user.id)
+            .order('created_at', { ascending: false })
+            .limit(1);
 
-            if (businessProfileError) {
-              setError("Error fetching business profile: " + businessProfileError.message);
-              console.error("BusinessProfilePage: Error fetching business profile:", businessProfileError);
-            } else {
-              // ✅ FIXED: Access data as array
-              setBusinessProfile(businessProfileData?.[0] as BusinessProfileData || null);
-              console.log("BusinessProfilePage: Business profile data set successfully.");
-            }
-          } catch (err) {
-            setError("Unexpected error occurred while fetching business profile");
-            console.error("BusinessProfilePage: Unexpected error during fetch:", err);
-          } finally {
-            setLoading(false);
-            console.log("BusinessProfilePage: Loading set to false in finally block.");
+          if (businessError) {
+            console.error("Error fetching business data:", businessError);
+            setError("Error loading business profile");
+          } else if (businessData?.[0]) {
+            setBusinessProfile(businessData[0]);
+            console.log("✅ Business profile loaded successfully");
+          } else {
+            console.log("❌ No business profile found, redirecting to create");
+            navigate("/create-business-profile");
           }
-        };
-        fetchBusinessProfileData();
-      } else if (profile.user_type === "professional") {
-        console.log("BusinessProfilePage: User is professional type. Redirecting to /profile.");
-        navigate("/profile");
-      } else {
-        console.warn("BusinessProfilePage: Invalid or missing user type in profile.", profile.user_type);
-        setError("Invalid or missing user type.");
+        }
+        // ✅ PRIORITY 2: Check if profile context says professional
+        else if (profile?.user_type === "professional") {
+          console.log("❌ User is professional type, redirecting to professional profile");
+          navigate("/profile");
+          return;
+        }
+        // ✅ PRIORITY 3: Profile context is empty/undefined - check database
+        else {
+          console.log("⚠️ No user type in context, checking database...");
+          
+          // First check if business profile exists
+          const { data: businessData, error: businessError } = await supabase
+            .from("businesses")
+            .select("*")
+            .eq("id", user.id)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (businessData?.[0]) {
+            console.log("✅ Found business profile in database, updating context");
+            
+            // Update context with business profile
+            setProfile({
+              id: user.id,
+              business_name: businessData[0].business_name,
+              email: user.email,
+              user_type: "business",
+            });
+            
+            setBusinessProfile(businessData[0]);
+          } else {
+            // Check if user has professional profile
+            const { data: professionalData } = await supabase
+              .from("user_profiles")
+              .select("user_type")
+              .eq("user_id", user.id)
+              .order('created_at', { ascending: false })
+              .limit(1);
+
+            if (professionalData?.[0]?.user_type === "professional") {
+              console.log("❌ User is professional, redirecting");
+              navigate("/profile");
+            } else {
+              console.log("❌ No profile found, redirecting to create business profile");
+              navigate("/create-business-profile");
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Unexpected error:", err);
+        setError("Unexpected error loading profile");
+      } finally {
         setLoading(false);
       }
-    } else {
-      console.warn("BusinessProfilePage: Profile not found in context. Redirecting to /login.");
-      setLoading(false); // If profile is null, assume not authenticated for this page's purpose
-      navigate("/login");
-    }
-  }, [profile, navigate]); // Rerun when profile in context changes or navigate function changes
+    };
+
+    loadBusinessProfile();
+  }, [profile, navigate, setProfile]); // ✅ Add setProfile to dependencies
 
   const handleViewCard = () => navigate("/business-profile-card");
 
@@ -211,7 +256,6 @@ export default function BusinessProfilePage() {
             {businessProfile.mobile && <p>📞 {businessProfile.mobile}</p>}
             {businessProfile.whatsapp && <p>💬 {businessProfile.whatsapp}</p>}
             {businessProfile.email && <p>📧 {businessProfile.email}</p>}
-            {/* Address is not in business profile table based on provided schema. Remove if not applicable. */}
             {businessProfile.website && <p>🌐 <a href={businessProfile.website} target="_blank" rel="noopener noreferrer">{businessProfile.website}</a></p>}
           </div>
         </div>

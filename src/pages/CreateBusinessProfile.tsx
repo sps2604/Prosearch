@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AfterLoginNavbar from "../components/AfterLoginNavbar";
 import { FaUser, FaAddressBook, FaLink, FaUpload, FaTimes } from "react-icons/fa";
 import { supabase } from "../lib/supabaseClient";
+import { useUser } from "../context/UserContext"; // ✅ ADD THIS IMPORT
+
 
 type Tab = "personal" | "contact" | "links";
 
@@ -12,7 +14,10 @@ export default function CreateBusinessProfile() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [uploading, setUploading] = useState(false);
+  const [loadingUserType, setLoadingUserType] = useState(true);
   const navigate = useNavigate();
+  const { setProfile } = useUser(); // ✅ ADD THIS LINE
+
 
   const [formData, setFormData] = useState({
     business_name: "",
@@ -31,6 +36,76 @@ export default function CreateBusinessProfile() {
     github: "",
     google_my_business: "",
   });
+
+  useEffect(() => {
+    const checkUserType = async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) {
+          console.error("Error fetching user:", error);
+          navigate("/login");
+          return;
+        }
+        
+        if (user) {
+          console.log("Checking user type for:", user.id);
+          
+          // FIRST: Check if business profile already exists
+          const { data: existingBusiness, error: businessError } = await supabase
+            .from("businesses")
+            .select("id, business_name")
+            .eq("id", user.id)
+            .maybeSingle(); // Use maybeSingle to avoid errors when no record exists
+          
+          if (businessError && businessError.code !== 'PGRST116') {
+            console.error("Error checking existing business:", businessError);
+          }
+          
+          if (existingBusiness) {
+            console.log("Business profile already exists, redirecting to view profile");
+            navigate("/business-profile");
+            return;
+          }
+          
+          // SECOND: Check if user is a professional (should go to professional profile creation instead)
+          const { data: profileData, error: profileError } = await supabase
+            .from("user_profiles")
+            .select("user_type")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          
+          if (profileError && profileError.code !== 'PGRST116') {
+            console.error("Error checking user profile:", profileError);
+          }
+          
+          if (profileData?.user_type === "professional") {
+            console.log("User is professional type, redirecting to create professional profile");
+            navigate("/create-profile");
+            return;
+          }
+          
+          // THIRD: If no business profile exists and user is not professional, allow business profile creation
+          console.log("No existing business profile found, allowing creation");
+          setLoadingUserType(false);
+        } else {
+          navigate("/login");
+        }
+      } catch (error) {
+        console.error("Unexpected error in checkUserType:", error);
+        navigate("/login");
+      }
+    };
+
+    checkUserType();
+  }, [navigate]);
+
+  if (loadingUserType) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-purple-100">
+        <p className="text-lg text-gray-700">Loading business profile...</p>
+      </div>
+    );
+  }
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -68,34 +143,41 @@ export default function CreateBusinessProfile() {
 
   const uploadBusinessLogo = async (userId: string): Promise<string | null> => {
     if (!selectedFile) return null;
+    
     try {
-      console.log("Attempting to upload business logo...");
+      console.log('Starting business logo upload for user:', userId);
+      
+      // Create unique filename
       const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${userId}-business-logo-${Date.now()}.${fileExt}`;
+      const fileName = `${userId}-business-${Date.now()}.${fileExt}`;
       const filePath = `business-logos/${fileName}`;
 
-      console.log(`Uploading file to: ${filePath}`);
+      console.log('Uploading to path:', filePath);
 
-      const {  error } = await supabase.storage
-        .from('business_logos') // You might need to create this bucket in Supabase Storage
+      // Upload to Supabase Storage - using same bucket as profiles for consistency
+      const { data, error } = await supabase.storage
+        .from('profiles') // Use same bucket as professional profiles
         .upload(filePath, selectedFile, {
           cacheControl: '3600',
           upsert: false
         });
 
       if (error) {
-        console.error("Supabase Storage Upload Error:", error);
+        console.error('Upload error:', error);
         throw new Error(`Upload failed: ${error.message}`);
       }
 
-      console.log("Upload successful, fetching public URL...");
+      console.log('Upload successful:', data);
+
+      // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('business_logos')
+        .from('profiles')
         .getPublicUrl(filePath);
-      console.log("Public URL:", publicUrl);
+
+      console.log('Public URL generated:', publicUrl);
       return publicUrl;
     } catch (error) {
-      console.error('Error in uploadBusinessLogo:', error);
+      console.error('Error uploading business logo:', error);
       throw error;
     }
   };
@@ -112,43 +194,67 @@ export default function CreateBusinessProfile() {
 
   const handleSubmit = async () => {
     try {
+      console.log('Starting form submission...');
       setUploading(true);
+
       const { data: { user }, error: userError } = await supabase.auth.getUser();
+
       if (userError || !user) {
         console.error("User fetch error:", userError);
         alert("You must be logged in to create a business profile.");
         return;
       }
-      console.log("User authenticated:", user.id);
+
+      console.log('User authenticated:', user.id);
+
+      // Check if business profile already exists
+      const { data: existingBusiness, error: checkError } = await supabase
+        .from("businesses")
+        .select("id")
+        .eq("id", user.id)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error("Error checking existing business:", checkError);
+        alert("Error checking existing profile. Please try again.");
+        return;
+      }
+
+      if (existingBusiness) {
+        alert("You already have a business profile. Redirecting to edit your profile.");
+        navigate("/business-profile");
+        return;
+      }
 
       let logoImageUrl: string | null = formData.logo_url.trim() || null;
 
       if (uploadMode === "upload" && selectedFile) {
-        console.log("Logo upload mode detected, attempting upload...");
+        console.log('Upload mode: file upload');
         try {
           const uploadedUrl = await uploadBusinessLogo(user.id);
           if (uploadedUrl) {
             logoImageUrl = uploadedUrl;
-            console.log("Business logo uploaded successfully.");
+            console.log('Business logo uploaded successfully:', uploadedUrl);
           } else {
-            console.error("uploadBusinessLogo returned null URL.");
+            console.error('Upload returned null');
             alert("Failed to upload business logo. Please try again.");
             return;
           }
         } catch (error) {
-          console.error("Error during business logo upload:", error);
+          console.error("Upload error:", error);
           alert(`Failed to upload business logo: ${error instanceof Error ? error.message : 'Unknown error'}`);
           return;
         }
       } else if (uploadMode === "upload" && !selectedFile) {
-        console.log("Upload mode selected but no file chosen.");
         logoImageUrl = null;
+        console.log('Upload mode but no file selected');
       } else {
-        console.log("URL mode selected for logo. Using provided URL:", logoImageUrl);
+        console.log('URL mode:', logoImageUrl);
       }
 
-      console.log("Attempting to insert business profile into Supabase...");
-      const { error } = await supabase.from("businesses").insert([
+      console.log('Saving business profile to database...');
+      
+      const { error } = await supabase.from("businesses").upsert([
         {
           id: user.id,
           business_name: formData.business_name,
@@ -166,23 +272,34 @@ export default function CreateBusinessProfile() {
           twitter: formData.twitter,
           github: formData.github,
           google_my_business: formData.google_my_business,
+          user_type: 'business',
         },
-      ]);
+      ], { onConflict: 'id' });
 
       if (error) {
-        console.error("Supabase Database Insert Error:", error);
+        console.error("Database insert error:", error);
         alert(`Failed to save business profile: ${error.message}`);
       } else {
-        console.log("Business profile saved successfully.");
+        console.log('Business profile saved successfully');
+        
+        // ✅ UPDATE USER CONTEXT AFTER SUCCESSFUL CREATION
+        setProfile({
+          id: user.id,
+          business_name: formData.business_name,
+          email: user.email || formData.email,
+          user_type: "business", // ✅ Set this explicitly
+        });
+        
+        console.log('UserContext updated with business profile');
         alert("Business profile created successfully!");
-        navigate("/business-profile"); // Navigate to a specific business dashboard
+        navigate("/business-profile");
       }
     } catch (err) {
-      console.error("Unexpected error in handleSubmit:", err);
+      console.error("Unexpected error:", err);
       alert(`An unexpected error occurred: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
+      console.log('Setting uploading to false');
       setUploading(false);
-      console.log("Uploading state set to false.");
     }
   };
 
@@ -213,7 +330,7 @@ export default function CreateBusinessProfile() {
           Create Business Profile
         </h2>
 
-        {/* Personal Details */}
+        {/* Business Info */}
         {activeTab === "personal" && (
           <div className="space-y-5">
             <div>
@@ -224,7 +341,6 @@ export default function CreateBusinessProfile() {
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm
                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
                 placeholder="Enter your business name"
-                required
               />
             </div>
 
@@ -322,7 +438,7 @@ export default function CreateBusinessProfile() {
             </div>
 
             <div>
-              <label className="block font-semibold text-gray-700 mb-1">Website / Portfolio:</label>
+              <label className="block font-semibold text-gray-700 mb-1">Website:</label>
               <input
                 value={formData.website}
                 onChange={(e) => handleChange("website", e.target.value)}
@@ -339,7 +455,7 @@ export default function CreateBusinessProfile() {
                 onChange={(e) => handleChange("summary", e.target.value)}
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm h-28 focus:outline-none
                    focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="Brief about your business, its services and mission"
+                placeholder="Brief about your business, services and mission"
               />
             </div>
           </div>
@@ -393,7 +509,6 @@ export default function CreateBusinessProfile() {
               ["youtube", "YouTube"],
               ["twitter", "Twitter"],
               ["github", "GitHub"],
-              ["website", "Website Link (if different from above)"],
               ["google_my_business", "Google My Business Link"],
             ].map(([field, label], index) => (
               <div key={index}>
