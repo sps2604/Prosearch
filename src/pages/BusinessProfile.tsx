@@ -63,7 +63,7 @@ export default function BusinessProfilePage() {
           const { data: businessData, error: businessError } = await supabase
             .from("businesses")
             .select("*")
-            .eq("id", user.id)
+            .eq("user_id", user.id)
             .order('created_at', { ascending: false })
             .limit(1);
 
@@ -92,7 +92,7 @@ export default function BusinessProfilePage() {
           const { data: businessData, error: businessError } = await supabase
             .from("businesses")
             .select("*")
-            .eq("id", user.id)
+            .eq("user_id", user.id)
             .order('created_at', { ascending: false })
             .limit(1);
 
