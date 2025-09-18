@@ -1,5 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import { FaUser, FaBriefcase } from "react-icons/fa";
 import { Building2, User } from "lucide-react";
 import Navbar from "../components/BeforeLoginNavbar";
 import registerIllustration from "../assets/register-illustration.svg";
