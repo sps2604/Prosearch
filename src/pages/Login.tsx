@@ -55,12 +55,14 @@ export default function Login() {
         console.log("Login: User type from user_profiles:", userType);
       } else {
         // If not found in user_profiles, try businesses table
+        // ✅ CORRECT:
         const { data: businessData } = await supabase
           .from("businesses")
           .select("user_type, business_name")
-          .eq("id", data.user.id)
+          .eq("user_id", data.user.id) // ✅ Use user_id
           .order('created_at', { ascending: false })
           .limit(1);
+
         
         if (businessData?.[0]?.user_type) {
           // ✅ Type assertion to ensure correct type

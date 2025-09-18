@@ -12,17 +12,22 @@ import {
   Facebook,
   Youtube,
   Twitter,
-  Github
+  Github,
+  Building2
 } from "lucide-react";
 
-interface UserProfile {
-  name: string;
-  profession: string;
+// ✅ Combined interface for both professional and business profiles
+interface ProfileData {
+  // Common fields
+  name?: string;
+  business_name?: string;
+  profession?: string;
+  industry?: string;
   logo_url: string;
-  experience: number;
-  languages: string;
-  skills: string;
-  address: string;
+  experience?: number;
+  languages?: string;
+  skills?: string;
+  address?: string;
   summary: string;
   mobile: string;
   whatsapp: string;
@@ -35,11 +40,12 @@ interface UserProfile {
   github: string;
   website: string;
   google_my_business: string;
+  user_type?: "professional" | "business";
 }
 
 export default function PublicProfile() {
   const { name } = useParams<{ name: string }>();
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,23 +58,49 @@ export default function PublicProfile() {
       }
 
       try {
-        // Fetch profile by name from user_profiles table
+        const decodedName = decodeURIComponent(name);
+        console.log("Searching for profile:", decodedName);
+
+        // ✅ First try to find professional profile by name
         const { data: userProfileData, error: userProfileError } = await supabase
           .from("user_profiles")
           .select("*")
-          .eq("name", decodeURIComponent(name))
+          .eq("name", decodedName)
           .single();
 
-        if (userProfileError) {
-          if (userProfileError.code === 'PGRST116') {
-            setError("Profile not found");
-          } else {
-            setError("Error fetching profile: " + userProfileError.message);
-          }
-        } else {
-          setUserProfile(userProfileData as UserProfile);
+        if (userProfileData && !userProfileError) {
+          console.log("Found professional profile");
+          setProfileData({
+            ...userProfileData,
+            user_type: "professional"
+          });
+          setLoading(false);
+          return;
         }
+
+        // ✅ If not found, try to find business profile by business_name
+        const { data: businessProfileData, error: businessProfileError } = await supabase
+          .from("businesses")
+          .select("*")
+          .eq("business_name", decodedName)
+          .single();
+
+        if (businessProfileData && !businessProfileError) {
+          console.log("Found business profile");
+          setProfileData({
+            ...businessProfileData,
+            user_type: "business"
+          });
+          setLoading(false);
+          return;
+        }
+
+        // ✅ If neither found, show error
+        console.log("Profile not found in either table");
+        setError("Profile not found");
+        
       } catch (err) {
+        console.error("Error fetching profile:", err);
         setError("Unexpected error occurred");
       } finally {
         setLoading(false);
@@ -79,20 +111,20 @@ export default function PublicProfile() {
   }, [name]);
 
   const handleWhatsAppClick = () => {
-    if (userProfile?.whatsapp) {
-      window.open(`https://wa.me/${userProfile.whatsapp.replace(/\D/g, '')}`, '_blank');
+    if (profileData?.whatsapp) {
+      window.open(`https://wa.me/${profileData.whatsapp.replace(/\D/g, '')}`, '_blank');
     }
   };
 
   const handleEmailClick = () => {
-    if (userProfile?.email) {
-      window.location.href = `mailto:${userProfile.email}`;
+    if (profileData?.email) {
+      window.location.href = `mailto:${profileData.email}`;
     }
   };
 
   const handlePhoneClick = () => {
-    if (userProfile?.mobile) {
-      window.location.href = `tel:${userProfile.mobile}`;
+    if (profileData?.mobile) {
+      window.location.href = `tel:${profileData.mobile}`;
     }
   };
 
@@ -115,27 +147,52 @@ export default function PublicProfile() {
     </div>
   );
 
-  if (!userProfile) return (
+  if (!profileData) return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
       <p className="text-center text-lg text-gray-600">No profile found</p>
     </div>
   );
 
+  // ✅ Determine display values based on profile type
+  const displayName = profileData.user_type === "business" 
+    ? profileData.business_name 
+    : profileData.name;
+  
+  const displayTitle = profileData.user_type === "business" 
+    ? profileData.industry 
+    : profileData.profession;
+
+  const profileTypeLabel = profileData.user_type === "business" 
+    ? "Business Profile" 
+    : "Professional Profile";
+
+  // ✅ Dynamic gradient based on profile type
+  const gradientClass = profileData.user_type === "business"
+    ? "bg-gradient-to-r from-orange-500 to-red-600" // Orange for business
+    : "bg-gradient-to-r from-blue-500 to-purple-600"; // Blue for professional
+
   const socialLinks = [
-    { key: 'linkedin', url: userProfile.linkedin, icon: Linkedin, color: 'text-blue-600', name: 'LinkedIn' },
-    { key: 'instagram', url: userProfile.instagram, icon: Instagram, color: 'text-pink-600', name: 'Instagram' },
-    { key: 'facebook', url: userProfile.facebook, icon: Facebook, color: 'text-blue-800', name: 'Facebook' },
-    { key: 'youtube', url: userProfile.youtube, icon: Youtube, color: 'text-red-600', name: 'YouTube' },
-    { key: 'twitter', url: userProfile.twitter, icon: Twitter, color: 'text-blue-400', name: 'Twitter' },
-    { key: 'github', url: userProfile.github, icon: Github, color: 'text-gray-800', name: 'GitHub' },
+    { key: 'linkedin', url: profileData.linkedin, icon: Linkedin, color: 'text-blue-600', name: 'LinkedIn' },
+    { key: 'instagram', url: profileData.instagram, icon: Instagram, color: 'text-pink-600', name: 'Instagram' },
+    { key: 'facebook', url: profileData.facebook, icon: Facebook, color: 'text-blue-800', name: 'Facebook' },
+    { key: 'youtube', url: profileData.youtube, icon: Youtube, color: 'text-red-600', name: 'YouTube' },
+    { key: 'twitter', url: profileData.twitter, icon: Twitter, color: 'text-blue-400', name: 'Twitter' },
+    { key: 'github', url: profileData.github, icon: Github, color: 'text-gray-800', name: 'GitHub' },
   ].filter(link => link.url);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
       <div className="bg-white shadow-sm">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          <h1 className="text-2xl font-bold text-gray-800">Professional Profile</h1>
+        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-3">
+          {profileData.user_type === "business" ? (
+            <Building2 size={24} className="text-orange-600" />
+          ) : (
+            <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+              <span className="text-white text-xs font-bold">P</span>
+            </div>
+          )}
+          <h1 className="text-2xl font-bold text-gray-800">{profileTypeLabel}</h1>
         </div>
       </div>
 
@@ -143,32 +200,39 @@ export default function PublicProfile() {
         {/* Main Profile Card */}
         <div className="bg-white rounded-3xl shadow-xl overflow-hidden mb-8">
           {/* Hero Section */}
-          <div className="bg-gradient-to-r from-blue-500 to-purple-600 px-8 py-12 text-white">
+          <div className={`${gradientClass} px-8 py-12 text-white`}>
             <div className="flex flex-col md:flex-row items-center gap-8">
               <div className="flex-shrink-0">
-                {userProfile.logo_url ? (
+                {profileData.logo_url ? (
                   <img
-                    src={userProfile.logo_url}
+                    src={profileData.logo_url}
                     alt="Profile"
                     className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
                   />
                 ) : (
                   <div className="w-32 h-32 bg-white bg-opacity-20 rounded-full flex items-center justify-center border-4 border-white shadow-lg">
                     <span className="text-white text-4xl font-bold">
-                      {userProfile.name?.charAt(0)?.toUpperCase() || '?'}
+                      {displayName?.charAt(0)?.toUpperCase() || '?'}
                     </span>
                   </div>
                 )}
               </div>
               
               <div className="text-center md:text-left">
-                <h1 className="text-4xl font-bold mb-2">{userProfile.name}</h1>
-                <p className="text-xl mb-2 opacity-90">{userProfile.profession}</p>
-                <div className="inline-block bg-white bg-opacity-20 rounded-full px-4 py-1">
-                  <span className="font-medium">
-                    {userProfile.experience} years experience
-                  </span>
-                </div>
+                <h1 className="text-4xl font-bold mb-2">{displayName}</h1>
+                <p className="text-xl mb-2 opacity-90">{displayTitle}</p>
+                {profileData.user_type === "professional" && profileData.experience && (
+                  <div className="inline-block bg-white bg-opacity-20 rounded-full px-4 py-1">
+                    <span className="font-medium">
+                      {profileData.experience} years experience
+                    </span>
+                  </div>
+                )}
+                {profileData.user_type === "business" && (
+                  <div className="inline-block bg-white bg-opacity-20 rounded-full px-4 py-1">
+                    <span className="font-medium">Business</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -176,7 +240,7 @@ export default function PublicProfile() {
           {/* Contact Actions */}
           <div className="px-8 py-6 bg-gray-50 border-b">
             <div className="flex flex-wrap gap-4 justify-center md:justify-start">
-              {userProfile.mobile && (
+              {profileData.mobile && (
                 <button
                   onClick={handlePhoneClick}
                   className="flex items-center gap-2 px-6 py-3 bg-green-500 text-white rounded-full hover:bg-green-600 transition-colors shadow-md"
@@ -186,7 +250,7 @@ export default function PublicProfile() {
                 </button>
               )}
               
-              {userProfile.whatsapp && (
+              {profileData.whatsapp && (
                 <button
                   onClick={handleWhatsAppClick}
                   className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors shadow-md"
@@ -196,7 +260,7 @@ export default function PublicProfile() {
                 </button>
               )}
               
-              {userProfile.email && (
+              {profileData.email && (
                 <button
                   onClick={handleEmailClick}
                   className="flex items-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors shadow-md"
@@ -210,20 +274,22 @@ export default function PublicProfile() {
 
           {/* Profile Content */}
           <div className="px-8 py-8">
-            {/* About Me */}
-            {userProfile.summary && (
+            {/* About Section */}
+            {profileData.summary && (
               <div className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-800 mb-4">About Me</h2>
-                <p className="text-gray-700 leading-relaxed text-lg">{userProfile.summary}</p>
+                <h2 className="text-2xl font-semibold text-gray-800 mb-4">
+                  {profileData.user_type === "business" ? "About Business" : "About Me"}
+                </h2>
+                <p className="text-gray-700 leading-relaxed text-lg">{profileData.summary}</p>
               </div>
             )}
 
-            {/* Skills */}
-            {userProfile.skills && (
+            {/* Skills (Professional only) */}
+            {profileData.user_type === "professional" && profileData.skills && (
               <div className="mb-8">
                 <h2 className="text-2xl font-semibold text-gray-800 mb-4">Core Skills</h2>
                 <div className="flex flex-wrap gap-3">
-                  {userProfile.skills.split(',').map((skill, index) => (
+                  {profileData.skills.split(',').map((skill, index) => (
                     <span
                       key={index}
                       className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full font-medium shadow-sm"
@@ -235,11 +301,11 @@ export default function PublicProfile() {
               </div>
             )}
 
-            {/* Languages */}
-            {userProfile.languages && (
+            {/* Languages (Professional only) */}
+            {profileData.user_type === "professional" && profileData.languages && (
               <div className="mb-8">
                 <h2 className="text-2xl font-semibold text-gray-800 mb-4">Languages</h2>
-                <p className="text-gray-700 text-lg">{userProfile.languages}</p>
+                <p className="text-gray-700 text-lg">{profileData.languages}</p>
               </div>
             )}
 
@@ -247,33 +313,33 @@ export default function PublicProfile() {
             <div className="mb-8">
               <h2 className="text-2xl font-semibold text-gray-800 mb-4">Contact Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {userProfile.mobile && (
+                {profileData.mobile && (
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                     <Phone size={20} className="text-green-500" />
-                    <span className="text-gray-700">{userProfile.mobile}</span>
+                    <span className="text-gray-700">{profileData.mobile}</span>
                   </div>
                 )}
                 
-                {userProfile.email && (
+                {profileData.email && (
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                     <Mail size={20} className="text-blue-500" />
-                    <span className="text-gray-700">{userProfile.email}</span>
+                    <span className="text-gray-700">{profileData.email}</span>
                   </div>
                 )}
                 
-                {userProfile.address && (
+                {profileData.address && (
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg md:col-span-2">
                     <MapPin size={20} className="text-red-500" />
-                    <span className="text-gray-700">{userProfile.address}</span>
+                    <span className="text-gray-700">{profileData.address}</span>
                   </div>
                 )}
                 
-                {userProfile.website && (
+                {profileData.website && (
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg md:col-span-2">
                     <Globe size={20} className="text-purple-500" />
-                    <a href={userProfile.website} target="_blank" rel="noopener noreferrer" 
+                    <a href={profileData.website} target="_blank" rel="noopener noreferrer" 
                        className="text-blue-600 hover:underline">
-                      {userProfile.website}
+                      {profileData.website}
                     </a>
                   </div>
                 )}
@@ -283,7 +349,9 @@ export default function PublicProfile() {
             {/* Social Media */}
             {socialLinks.length > 0 && (
               <div>
-                <h2 className="text-2xl font-semibold text-gray-800 mb-4">Connect with Me</h2>
+                <h2 className="text-2xl font-semibold text-gray-800 mb-4">
+                  {profileData.user_type === "business" ? "Connect with Us" : "Connect with Me"}
+                </h2>
                 <div className="flex flex-wrap gap-4">
                   {socialLinks.map(({ key, url, icon: Icon, color, name }) => (
                     <a
@@ -298,9 +366,9 @@ export default function PublicProfile() {
                     </a>
                   ))}
                   
-                  {userProfile.google_my_business && (
+                  {profileData.google_my_business && (
                     <a
-                      href={userProfile.google_my_business}
+                      href={profileData.google_my_business}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
@@ -317,7 +385,7 @@ export default function PublicProfile() {
 
         {/* Footer */}
         <div className="text-center text-gray-500 text-sm">
-          <p>This is a professional profile page</p>
+          <p>This is a {profileData.user_type} profile page</p>
         </div>
       </div>
     </div>

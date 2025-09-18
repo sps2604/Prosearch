@@ -43,7 +43,7 @@ export default function AfterLoginNavbar() {
       const { data: businessData } = await supabase
         .from("businesses")
         .select("user_type")
-        .eq("id", user.id)
+        .eq("user_id", user.id) // ✅ Use user_id
         .single();
       
       if (businessData?.user_type) {
