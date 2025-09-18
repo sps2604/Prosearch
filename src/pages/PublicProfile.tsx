@@ -59,19 +59,20 @@ export default function PublicProfile() {
 
       try {
         const decodedName = decodeURIComponent(name);
-        console.log("Searching for profile:", decodedName);
+        console.log("🔍 Searching for:", decodedName);
 
         // ✅ First try to find professional profile by name
         const { data: userProfileData, error: userProfileError } = await supabase
           .from("user_profiles")
           .select("*")
-          .eq("name", decodedName)
-          .single();
+          .eq("name", decodedName);
 
-        if (userProfileData && !userProfileError) {
-          console.log("Found professional profile");
+        console.log("Professional query result:", { data: userProfileData, error: userProfileError });
+
+        if (userProfileData && userProfileData.length > 0 && !userProfileError) {
+          console.log("✅ Found professional profile");
           setProfileData({
-            ...userProfileData,
+            ...userProfileData[0],
             user_type: "professional"
           });
           setLoading(false);
@@ -82,13 +83,14 @@ export default function PublicProfile() {
         const { data: businessProfileData, error: businessProfileError } = await supabase
           .from("businesses")
           .select("*")
-          .eq("business_name", decodedName)
-          .single();
+          .eq("business_name", decodedName);
 
-        if (businessProfileData && !businessProfileError) {
-          console.log("Found business profile");
+        console.log("Business query result:", { data: businessProfileData, error: businessProfileError });
+
+        if (businessProfileData && businessProfileData.length > 0 && !businessProfileError) {
+          console.log("✅ Found business profile");
           setProfileData({
-            ...businessProfileData,
+            ...businessProfileData[0],
             user_type: "business"
           });
           setLoading(false);
@@ -96,11 +98,11 @@ export default function PublicProfile() {
         }
 
         // ✅ If neither found, show error
-        console.log("Profile not found in either table");
-        setError("Profile not found");
+        console.log("❌ Profile not found in either table");
+        setError(`Profile "${decodedName}" not found`);
         
       } catch (err) {
-        console.error("Error fetching profile:", err);
+        console.error("Unexpected error:", err);
         setError("Unexpected error occurred");
       } finally {
         setLoading(false);
