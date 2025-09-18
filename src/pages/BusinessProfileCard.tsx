@@ -151,28 +151,29 @@ export default function BusinessProfileCard() {
   };
 
   const handleShare = async () => {
-    const safeName = encodeURIComponent(businessProfile?.business_name ?? "");
-    const profileUrl = `${window.location.origin}/public-business-profile/${safeName}`;
+  const safeName = encodeURIComponent(businessProfile?.business_name ?? "");
+  const profileUrl = `${window.location.origin}/public-profile/${safeName}`; // ✅ FIXED: Changed from public-business-profile
 
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `${businessProfile?.business_name}'s Profile`,
-          text: `Check out ${businessProfile?.business_name}'s business profile`,
-          url: profileUrl,
-        });
-      } catch (error) {
-        console.log('Share failed:', error);
-      }
-    } else {
-      try {
-        await navigator.clipboard.writeText(profileUrl);
-        alert('Profile link copied to clipboard!');
-      } catch (error) {
-        console.error('Failed to copy link:', error);
-      }
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: `${businessProfile?.business_name}'s Profile`,
+        text: `Check out ${businessProfile?.business_name}'s business profile`,
+        url: profileUrl,
+      });
+    } catch (error) {
+      console.log('Share failed:', error);
     }
-  };
+  } else {
+    try {
+      await navigator.clipboard.writeText(profileUrl);
+      alert('Profile link copied to clipboard!');
+    } catch (error) {
+      console.error('Failed to copy link:', error);
+    }
+  }
+};
+
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
