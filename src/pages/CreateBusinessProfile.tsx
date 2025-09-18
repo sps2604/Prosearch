@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import AfterLoginNavbar from "../components/AfterLoginNavbar";
 import { FaUser, FaAddressBook, FaLink, FaUpload, FaTimes } from "react-icons/fa";
 import { supabase } from "../lib/supabaseClient";
-import { useUser } from "../context/UserContext";
+import { useUser } from "../context/UserContext"; // ✅ ADDED
 
 type Tab = "personal" | "contact" | "links";
 
@@ -15,7 +15,7 @@ export default function CreateBusinessProfile() {
   const [uploading, setUploading] = useState(false);
   const [loadingUserType, setLoadingUserType] = useState(true);
   const navigate = useNavigate();
-  const { setProfile } = useUser();
+  const { setProfile } = useUser(); // ✅ ADDED
 
   const [formData, setFormData] = useState({
     business_name: "",
@@ -48,42 +48,43 @@ export default function CreateBusinessProfile() {
         if (user) {
           console.log("Checking user type for:", user.id);
           
-          // Check if business profile already exists using user_id (correct column)
+          // FIRST: Check if business profile already exists
           const { data: existingBusiness, error: businessError } = await supabase
             .from("businesses")
-            .select("id, business_name, user_id")
-            .eq("user_id", user.id) // Fixed: Use user_id not id
-            .maybeSingle();
-          
-          console.log("Existing business check:", { existingBusiness, businessError });
+            .select("id, business_name")
+            .eq("user_id", user.id) // ✅ FIXED: Use user_id
+            .order('created_at', { ascending: false })
+            .limit(1);
           
           if (businessError && businessError.code !== 'PGRST116') {
             console.error("Error checking existing business:", businessError);
           }
           
-          if (existingBusiness) {
+          if (existingBusiness?.[0]) { // ✅ FIXED: Array access
             console.log("Business profile already exists, redirecting to view profile");
             navigate("/business-profile");
             return;
           }
           
-          // Check if user is a professional
+          // SECOND: Check if user is a professional (should go to professional profile creation instead)
           const { data: profileData, error: profileError } = await supabase
             .from("user_profiles")
             .select("user_type")
             .eq("user_id", user.id)
-            .maybeSingle();
+            .order('created_at', { ascending: false })
+            .limit(1);
           
           if (profileError && profileError.code !== 'PGRST116') {
             console.error("Error checking user profile:", profileError);
           }
           
-          if (profileData?.user_type === "professional") {
+          if (profileData?.[0]?.user_type === "professional") { // ✅ FIXED: Array access
             console.log("User is professional type, redirecting to create professional profile");
             navigate("/create-profile");
             return;
           }
           
+          // THIRD: If no business profile exists and user is not professional, allow business profile creation
           console.log("No existing business profile found, allowing creation");
           setLoadingUserType(false);
         } else {
@@ -153,7 +154,7 @@ export default function CreateBusinessProfile() {
       console.log('Uploading to path:', filePath);
 
       const { data, error } = await supabase.storage
-        .from('profiles')
+        .from('profiles') // Use same bucket as professional profiles
         .upload(filePath, selectedFile, {
           cacheControl: '3600',
           upsert: false
@@ -203,20 +204,26 @@ export default function CreateBusinessProfile() {
 
       console.log('User authenticated:', user.id);
 
-      // Double-check if business profile already exists using user_id
-      const { data: existingBusiness } = await supabase
+      // Check if business profile already exists
+      const { data: existingBusiness, error: checkError } = await supabase
         .from("businesses")
-        .select("id, user_id")
-        .eq("user_id", user.id) // Fixed: Use user_id not id
-        .maybeSingle();
+        .select("id")
+        .eq("user_id", user.id) // ✅ FIXED: Use user_id
+        .order('created_at', { ascending: false })
+        .limit(1);
 
-      if (existingBusiness) {
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error("Error checking existing business:", checkError);
+        alert("Error checking existing profile. Please try again.");
+        return;
+      }
+
+      if (existingBusiness?.[0]) { // ✅ FIXED: Array access
         alert("You already have a business profile. Redirecting to your profile.");
         navigate("/business-profile");
         return;
       }
 
-      // Handle logo upload
       let logoImageUrl: string | null = formData.logo_url.trim() || null;
 
       if (uploadMode === "upload" && selectedFile) {
@@ -245,10 +252,9 @@ export default function CreateBusinessProfile() {
 
       console.log('Saving business profile to database...');
       
-      // Fixed: Insert with user_id instead of id
-      const { data, error } = await supabase.from("businesses").insert([
+      const { error } = await supabase.from("businesses").insert([
         {
-          user_id: user.id, // Fixed: Use user_id instead of id
+          user_id: user.id, // ✅ FIXED: Use user_id instead of id
           business_name: formData.business_name,
           industry: formData.industry,
           logo_url: logoImageUrl,
@@ -266,15 +272,15 @@ export default function CreateBusinessProfile() {
           google_my_business: formData.google_my_business,
           user_type: 'business',
         },
-      ]).select(); // Add .select() to get the created record
+      ]);
 
       if (error) {
         console.error("Database insert error:", error);
         alert(`Failed to save business profile: ${error.message}`);
       } else {
-        console.log('Business profile saved successfully:', data);
+        console.log('Business profile saved successfully');
         
-        // Update user context after successful creation
+        // ✅ ADDED: UPDATE USER CONTEXT AFTER SUCCESSFUL CREATION
         setProfile({
           id: user.id,
           business_name: formData.business_name,
