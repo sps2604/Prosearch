@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
+import SearchResultCard from "./SearchResultCard"; // ✅ Added import
 
 export type ProfessionalSummary = {
   user_id: string;
@@ -61,6 +62,7 @@ export default function SearchBar({
     if (trimmed === "" && !locationText && !minExperience) {
       setResults([]);
       setError(null);
+      setMessage(null); // ✅ Clear message when empty search
       onResults?.([]);
       return;
     }
@@ -97,8 +99,8 @@ export default function SearchBar({
       }
 
       const normalized = (data || []) as ProfessionalSummary[];
-      if (normalized.length === 0) {
-        setMessage("Please enter a valid profession");
+      if (normalized.length === 0 && trimmed) {
+        setMessage("No professionals found for your search");
       }
       setResults(normalized);
       onResults?.(normalized);
@@ -142,66 +144,101 @@ export default function SearchBar({
   };
 
   return (
-    <div className={`w-full ${className}`}>
-      {renderInput && (
-        <div className="flex items-center gap-2 bg-white shadow-md rounded-full px-4 py-2">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={placeholder}
-            className="flex-1 outline-none px-2"
-          />
-          <button
-            onClick={() => runSearch(query)}
-            disabled={loading}
-            className="bg-blue-600 text-white px-4 py-1 rounded-full hover:bg-blue-700 disabled:opacity-60"
-          >
-            {loading ? "Searching…" : "Search"}
-          </button>
-        </div>
-      )}
+    <>
+      {/* ✅ CSS for smooth horizontal scrolling */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          .horizontal-scroll::-webkit-scrollbar {
+            height: 6px;
+          }
+          .horizontal-scroll::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 3px;
+          }
+          .horizontal-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+          }
+          .horizontal-scroll::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+          }
+        `
+      }} />
 
-      {error && (
-        <div className="text-sm text-red-600 mt-2 px-2">{error}</div>
-      )}
-      {message && !error && (
-        <div className="text-sm text-yellow-700 mt-2 px-2">{message}</div>
-      )}
-
-      {showResults && results.length > 0 && (
-        <div className={`${renderInput ? "mt-3" : ""} bg-white rounded-xl shadow-md divide-y`}>
-          {results.map((p) => (
+      <div className={`w-full ${className}`}>
+        {renderInput && (
+          <div className="flex items-center gap-2 bg-white shadow-md rounded-full px-4 py-2">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={placeholder}
+              className="flex-1 outline-none px-2 text-sm sm:text-base"
+            />
             <button
-              key={p.user_id}
-              onClick={() => handleSelect(p)}
-              className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3"
+              onClick={() => runSearch(query)}
+              disabled={loading}
+              className="bg-blue-600 text-white px-4 py-1 rounded-full hover:bg-blue-700 disabled:opacity-60 text-sm font-medium transition-colors"
             >
-              {p.logo_url ? (
-                <img
-                  src={p.logo_url}
-                  alt={p.name}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
-                  {p.name?.[0]?.toUpperCase() || "P"}
-                </div>
-              )}
-              <div className="min-w-0">
-                <div className="font-medium truncate">{p.name}</div>
-                <div className="text-sm text-gray-600 truncate">
-                  {p.profession}
-                  {p.address ? ` · ${p.address}` : ""}
-                </div>
-              </div>
+              {loading ? "Searching…" : "Search"}
             </button>
-          ))}
-        </div>
-      )}
-    </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="text-sm text-red-600 mt-2 px-2 bg-red-50 border border-red-200 rounded-lg p-2">
+            {error}
+          </div>
+        )}
+        
+        {message && !error && (
+          <div className="text-sm text-amber-700 mt-2 px-2 bg-amber-50 border border-amber-200 rounded-lg p-2">
+            {message}
+          </div>
+        )}
+
+        {/* ✅ NEW: Horizontal Cards Layout */}
+        {showResults && results.length > 0 && (
+          <div className={`${renderInput ? "mt-4" : ""}`}>
+            {/* Results Header */}
+            <div className="mb-3 px-1">
+              <p className="text-sm text-gray-600 font-medium">
+                Found {results.length} professional{results.length > 1 ? 's' : ''}
+                {query.trim() && ` for "${query.trim()}"`}
+              </p>
+            </div>
+            
+            {/* Horizontal Scrollable Cards */}
+            <div className="overflow-x-auto pb-2 horizontal-scroll">
+              <div className="flex gap-4 w-max px-1">
+                {results.map((p) => (
+                  <SearchResultCard
+                    key={p.user_id}
+                    profile={p}
+                    onClick={() => handleSelect(p)}
+                  />
+                ))}
+              </div>
+            </div>
+            
+            {/* Show More Button (if at limit) */}
+            {results.length >= effectiveLimit && (
+              <div className="mt-4 text-center">
+                <button 
+                  onClick={() => {
+                    // Increase limit and search again (you can modify this logic)
+                    runSearch(query);
+                  }}
+                  className="text-blue-600 text-sm font-medium hover:text-blue-700 transition-colors bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-full border border-blue-200"
+                >
+                  Load more results
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </>
   );
 }
-
-
