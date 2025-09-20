@@ -1,5 +1,4 @@
-import React from "react";
-import { Phone, Mail, MapPin, Globe, Linkedin, Share2 } from "lucide-react";
+import { Phone, Mail, MapPin, Globe, Linkedin} from "lucide-react";
 
 interface UserProfile {
   name: string;

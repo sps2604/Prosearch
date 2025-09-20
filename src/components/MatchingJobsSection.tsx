@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import  { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import JobCard, { type JobPost } from "./JobCard";
 import { useUser } from "../context/UserContext";

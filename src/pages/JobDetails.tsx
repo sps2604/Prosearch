@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import  { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, MapPin, Clock, DollarSign, Building2, Calendar, Users, ExternalLink, Mail, Phone, Globe } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, DollarSign, Building2, Calendar, Mail, Phone, Globe } from "lucide-react";
 import AfterLoginNavbar from "../components/AfterLoginNavbar";
 import Footer from "../components/footer";
 import { supabase } from "../lib/supabaseClient";

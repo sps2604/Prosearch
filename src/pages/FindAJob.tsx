@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import  { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search, MapPin, Filter, X } from "lucide-react";
 import AfterLoginNavbar from "../components/AfterLoginNavbar";

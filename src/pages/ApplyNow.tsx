@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Mail, Phone, Globe, Building2, MapPin, DollarSign, Upload, FileText, X } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Globe, MapPin, DollarSign, Upload, FileText, X } from "lucide-react";
 import AfterLoginNavbar from "../components/AfterLoginNavbar";
 import Footer from "../components/footer";
 import ProfileCardComponent from "../components/ProfileCardComponent"; // ✅ FIXED: Import reusable component
@@ -59,7 +59,7 @@ export default function ApplyNow() {
     if (!profile?.id) return;
     
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("user_profiles")
         .select("*")
         .eq("user_id", profile.id)
@@ -98,7 +98,7 @@ export default function ApplyNow() {
       const fileName = `${profile?.id}-${Date.now()}.${fileExt}`;
       const filePath = `applications/${folder}/${fileName}`;
 
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('documents')
         .upload(filePath, file);
 
