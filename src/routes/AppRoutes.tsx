@@ -29,6 +29,9 @@ import BusinessProfileCard from "../pages/BusinessProfileCard";
 import EditProfile from "../pages/EditProfile";
 import EditBusinessProfile from "../pages/EditBusinessProfile";
 
+import JobDetails from "../pages/JobDetails";
+import ApplyNow from "../pages/ApplyNow";
+
 export default function AppRoutes() {
   return (
     <Router>
@@ -53,6 +56,10 @@ export default function AppRoutes() {
           <Route path="/browse-job" element={<BrowseJob />} /> 
           <Route path="/help" element={<Help />} />
           <Route path="/how-to/:topic" element={<HowTo />} />
+
+          {/* ✅ ADDED: New Job Routes */}
+          <Route path="/job-details/:id" element={<JobDetails />} />
+          <Route path="/apply-now" element={<ApplyNow />} />
 
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/job-posted" element={<JobPosted />} />

@@ -1,390 +1,405 @@
-import  { useState, useEffect } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
-import FilterSidebar from "../components/FilterSidebar";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Search, MapPin, Filter, X } from "lucide-react";
 import AfterLoginNavbar from "../components/AfterLoginNavbar";
 import Footer from "../components/footer";
 import { supabase } from "../lib/supabaseClient";
+import JobCard, { type JobPost } from "../components/JobCard";
+import MatchingJobsSection from "../components/MatchingJobsSection";
+import FilterSidebar from "../components/FilterSidebar"; // ✅ ADDED: Import FilterSidebar
 
-interface Job {
-  id: number;
-  profession: string;
-  description: string;
-  location: string;
-  salary: string;
-  experience: string | null;
-  job_type: string[];
-  created_at: string;
-  company_id: number;
-}
+// ✅ Category data with image imports
+import graphicDesignerImg from "../assets/graphic_designer.jpg";
+import digitalMarketingImg from "../assets/digital_marketing.png";
+import telecallersImg from "../assets/telecallers.png";
+import videoEditorsImg from "../assets/video_editors.png";
+import javaDevelopersImg from "../assets/java_developers.png";
+import internImg from "../assets/intern.png";
+import dataEntryImg from "../assets/data_entry.png";
+import remoteWorkersImg from "../assets/remote_workers.png";
 
-interface Company {
-  id: number;
-  name: string;
-  email: string;
-  contact: string;
-  website: string;
-}
+// ✅ Job categories with images
+const jobCategories = [
+  { name: "Graphics Designer", image: graphicDesignerImg, searchTerm: "Graphics Designer" },
+  { name: "Digital Marketing", image: digitalMarketingImg, searchTerm: "Digital Marketing" },
+  { name: "Telecallers", image: telecallersImg, searchTerm: "Telecaller" },
+  { name: "Video Editors", image: videoEditorsImg, searchTerm: "Video Editor" },
+  { name: "Java Developers", image: javaDevelopersImg, searchTerm: "Java Developer" },
+  { name: "Interns", image: internImg, searchTerm: "Intern" },
+  { name: "Data Entry", image: dataEntryImg, searchTerm: "Data Entry" },
+  { name: "Remote Workers", image: remoteWorkersImg, searchTerm: "Remote" },
+];
 
-export default function BrowseJob() {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const [search, setSearch] = useState("");
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [companies, setCompanies] = useState<{ [key: number]: Company }>({});
-  const [loading, setLoading] = useState(false);
+export default function FindAJob() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [jobs, setJobs] = useState<JobPost[]>([]);
+  const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
+  const [showSidebar, setShowSidebar] = useState(false); // ✅ ADDED: Sidebar state
+  
+  // Search states
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
+  const [selectedLocation, setSelectedLocation] = useState(searchParams.get("location") || "");
 
-  // Set search term from URL query params
   useEffect(() => {
-    const searchQuery = searchParams.get("search") || "";
-    const categoryQuery = searchParams.get("category") || "";
+    fetchJobs();
+  }, [searchParams]); // ✅ UPDATED: Watch searchParams changes
 
-    if (searchQuery) setSearch(searchQuery);
-    else if (categoryQuery) setSearch(categoryQuery);
-  }, [searchParams]);
-
-  // ULTRA FAST - Separate queries for better performance
   const fetchJobs = async () => {
-    setLoading(true);
-    console.log("🚀 Fast fetch starting...");
-
     try {
-      // Get filter parameters
-      const searchQuery = searchParams.get("search") || search;
-      const categoryQuery = searchParams.get("category") || "";
-      const jobTypes = searchParams.get("job_types")?.split(",").filter(Boolean) || [];
-      const locationFilter = searchParams.get("location") || "";
-
-      // STEP 1: Fast job query without joins
-      let jobQuery = supabase
+      setLoading(true);
+      
+      let query = supabase
         .from("Job_Posts")
-        .select("id, profession, description, location, salary, experience, job_type, created_at, company_id")
-        .order("created_at", { ascending: false })
-        .limit(15);
+        .select("*", { count: "exact" })
+        .order("created_at", { ascending: false });
 
-      // Apply only the most important filters
-      if (searchQuery.trim()) {
-        jobQuery = jobQuery.ilike("profession", `%${searchQuery}%`);
-      } else if (categoryQuery.trim()) {
-        jobQuery = jobQuery.ilike("profession", `%${categoryQuery}%`);
+      // ✅ UPDATED: Apply filters from URL params
+      const search = searchParams.get("search");
+      const location = searchParams.get("location");
+      const jobTypes = searchParams.get("job_types")?.split(",").filter(Boolean);
+      const maxSalary = searchParams.get("max_salary");
+      const category = searchParams.get("category");
+
+      // Apply search filter
+      if (search) {
+        query = query.or(`profession.ilike.%${search}%,description.ilike.%${search}%`);
       }
 
-      if (locationFilter.trim()) {
-        jobQuery = jobQuery.ilike("location", `%${locationFilter}%`);
+      // Apply location filter
+      if (location) {
+        query = query.ilike("location", `%${location}%`);
       }
 
-      // Simple job type filter
-      if (jobTypes.length === 1) {
-        jobQuery = jobQuery.contains('job_type', [jobTypes[0]]);
+      // Apply category filter
+      if (category) {
+        query = query.ilike("profession", `%${category}%`);
       }
 
-      console.log("🔄 Fetching jobs...");
-      const { data: jobData, error: jobError } = await jobQuery;
-
-      if (jobError) {
-        console.error("❌ Job fetch error:", jobError);
-        throw jobError;
+      // Apply job types filter
+      if (jobTypes && jobTypes.length > 0) {
+        const jobTypeFilter = jobTypes.map(type => `job_type.cs.{"${type}"}`).join(",");
+        query = query.or(jobTypeFilter);
       }
 
-      console.log("✅ Jobs fetched:", jobData?.length || 0);
-
-      if (!jobData || jobData.length === 0) {
-        setJobs([]);
-        setCompanies({});
-        setTotalCount(0);
-        setLoading(false);
-        return;
+      // Apply salary filter
+      if (maxSalary) {
+        // For salary filtering, you might need to add salary parsing logic
+        // This depends on how your salary field is structured
       }
 
-      // STEP 2: Fast company query for only needed companies
-      const companyIds = [...new Set(jobData.map(job => job.company_id).filter(Boolean))];
-      
-      if (companyIds.length > 0) {
-        console.log("🔄 Fetching companies for:", companyIds.length, "companies");
-        const { data: companyData, error: companyError } = await supabase
-          .from("Companies")
-          .select("id, name, email, contact, website")
-          .in("id", companyIds);
+      const { data, error, count } = await query;
 
-        if (companyError) {
-          console.warn("⚠️ Company fetch error:", companyError);
-        }
+      if (error) throw error;
 
-        // Create company lookup map
-        const companyMap: { [key: number]: Company } = {};
-        (companyData || []).forEach(company => {
-          companyMap[company.id] = company;
-        });
-        setCompanies(companyMap);
-        console.log("✅ Companies fetched:", Object.keys(companyMap).length);
-      }
-
-      setJobs(jobData);
-      setTotalCount(jobData.length);
-
+      setJobs(data || []);
+      setTotalCount(count || 0);
     } catch (error) {
-      console.error("❌ Fetch error:", error);
-      
-      // ✅ FIXED: Ultra-simple fallback with ALL required fields
-      try {
-        console.log("🔄 Trying simple fallback...");
-        const { data: fallbackData } = await supabase
-          .from("Job_Posts")
-          .select("id, profession, description, location, salary, experience, job_type, created_at, company_id")
-          .order("created_at", { ascending: false })
-          .limit(10);
-
-        setJobs(fallbackData || []);
-        setTotalCount(fallbackData?.length || 0);
-        console.log("✅ Fallback loaded:", fallbackData?.length || 0);
-        
-      } catch (fallbackError) {
-        console.error("❌ Fallback failed:", fallbackError);
-        setJobs([]);
-        setTotalCount(0);
-      }
+      console.error("Error fetching jobs:", error);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
-  // Fast fetch with minimal delay
-  useEffect(() => {
-    const timer = setTimeout(fetchJobs, 200);
-    return () => clearTimeout(timer);
-  }, [searchParams]);
+  // ✅ ADDED: Handle category click
+  const handleCategoryClick = (category: typeof jobCategories[0]) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("category", category.searchTerm);
+    params.set("search", category.searchTerm);
+    setSearchParams(params);
+    setSearchTerm(category.searchTerm);
+  };
 
-  // Debounce manual search
-  useEffect(() => {
-    if (search && !searchParams.get("search")) {
-      const timeout = setTimeout(() => {
-        const params = new URLSearchParams(searchParams);
-        params.set("search", search);
-        window.history.pushState({}, "", `${window.location.pathname}?${params}`);
-      }, 500);
-
-      return () => clearTimeout(timeout);
-    }
-  }, [search]);
-
+  // ✅ ADDED: Handle search
   const handleSearch = () => {
-    const q = search.trim();
-    if (!q) return;
-    navigate(`/browse-job?search=${encodeURIComponent(q)}`);
+    const params = new URLSearchParams(searchParams);
+    if (searchTerm) {
+      params.set("search", searchTerm);
+    } else {
+      params.delete("search");
+    }
+    if (selectedLocation) {
+      params.set("location", selectedLocation);
+    } else {
+      params.delete("location");
+    }
+    setSearchParams(params);
   };
 
-  // ✅ REMOVED: Unused handleKeyPress function
-
-  const getCompanyName = (companyId: number) => {
-    return companies[companyId]?.name || "Company Name N/A";
-  };
-
-  const getCompanyInfo = (companyId: number) => {
-    return companies[companyId] || null;
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-IN", {
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  const getActiveFiltersText = () => {
+  // ✅ ADDED: Get active filters for display
+  const getActiveFilters = () => {
     const filters = [];
-    const searchQuery = searchParams.get("search");
-    const category = searchParams.get("category");
-    const jobTypes = searchParams.get("job_types")?.split(",").filter(Boolean) || [];
+    const search = searchParams.get("search");
     const location = searchParams.get("location");
+    const jobTypes = searchParams.get("job_types")?.split(",").filter(Boolean);
+    const maxSalary = searchParams.get("max_salary");
+    const category = searchParams.get("category");
 
-    if (searchQuery) filters.push(`"${searchQuery}"`);
-    if (category) filters.push(`${category}`);
-    if (jobTypes.length > 0) filters.push(jobTypes.join(", "));
-    if (location) filters.push(location);
+    if (search) filters.push({ type: "search", value: search, label: `"${search}"` });
+    if (location) filters.push({ type: "location", value: location, label: `📍 ${location}` });
+    if (category && category !== search) filters.push({ type: "category", value: category, label: `🏷️ ${category}` });
+    if (jobTypes && jobTypes.length > 0) {
+      jobTypes.forEach(type => filters.push({ type: "job_type", value: type, label: `💼 ${type}` }));
+    }
+    if (maxSalary) filters.push({ type: "salary", value: maxSalary, label: `💰 Up to ₹${parseInt(maxSalary).toLocaleString()}` });
 
-    return filters.length > 0 ? filters.join(" • ") : "All Jobs";
+    return filters;
   };
+
+  // ✅ ADDED: Remove specific filter
+  const removeFilter = (filterType: string, filterValue?: string) => {
+    const params = new URLSearchParams(searchParams);
+    
+    switch (filterType) {
+      case "search":
+        params.delete("search");
+        setSearchTerm("");
+        break;
+      case "location":
+        params.delete("location");
+        setSelectedLocation("");
+        break;
+      case "category":
+        params.delete("category");
+        break;
+      case "job_type":
+        const jobTypes = params.get("job_types")?.split(",").filter(Boolean) || [];
+        const updatedJobTypes = jobTypes.filter(type => type !== filterValue);
+        if (updatedJobTypes.length > 0) {
+          params.set("job_types", updatedJobTypes.join(","));
+        } else {
+          params.delete("job_types");
+        }
+        break;
+      case "salary":
+        params.delete("max_salary");
+        break;
+    }
+    
+    setSearchParams(params);
+  };
+
+  // ✅ ADDED: Clear all filters
+  const clearAllFilters = () => {
+    setSearchParams(new URLSearchParams());
+    setSearchTerm("");
+    setSelectedLocation("");
+  };
+
+  const activeFilters = getActiveFilters();
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="min-h-screen bg-gray-50 relative">
       <AfterLoginNavbar />
+      
+      {/* ✅ ADDED: Sidebar Overlay */}
+      {showSidebar && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setShowSidebar(false)}
+        />
+      )}
 
-      <div className="flex flex-1 bg-gray-50">
-        {/* Sidebar */}
-        <aside className="w-1/4 p-4 border-r bg-white shadow-sm">
+      {/* ✅ ADDED: Left Sidebar */}
+      <div
+        className={`fixed top-0 left-0 h-full w-80 bg-white shadow-xl z-50 transform transition-transform duration-300 ease-in-out ${
+          showSidebar ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="p-6 h-full overflow-y-auto">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold">Filters</h2>
+            <button
+              onClick={() => setShowSidebar(false)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <X size={24} />
+            </button>
+          </div>
           <FilterSidebar />
-        </aside>
+        </div>
+      </div>
+      
+      {/* Hero Section */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+        <div className="max-w-6xl mx-auto px-4 py-12">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold mb-4">Find Jobs ⚡ Fast</h1>
+            <p className="text-xl text-blue-100">✨ Instantly!</p>
+          </div>
 
-        {/* Main Content */}
-        <main className="flex-1 p-6">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold mb-2 text-gray-800">
-              Find Jobs ⚡ Fast
-            </h1>
-            <p className="text-lg text-gray-600 mb-4">✨ Instantly!</p>
+          {/* Search Bar */}
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-white rounded-lg shadow-lg p-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 text-gray-400" size={20} />
+                  <input
+                    type="text"
+                    placeholder="Job title or keywords"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  />
+                </div>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-3 text-gray-400" size={20} />
+                  <input
+                    type="text"
+                    placeholder="Location"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    value={selectedLocation}
+                    onChange={(e) => setSelectedLocation(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSearch}
+                    className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Search
+                  </button>
+                  <button
+                    onClick={() => setShowSidebar(true)}
+                    className="flex items-center justify-center gap-2 bg-gray-100 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors relative"
+                  >
+                    <Filter size={20} />
+                    {activeFilters.length > 0 && (
+                      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">
+                        {activeFilters.length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-            {/* Search Bar */}
-            <div className="flex items-center gap-2 bg-white shadow-lg rounded-lg px-4 py-3 max-w-2xl mb-4">
-              <input
-                type="text"
-                placeholder="Search jobs..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
-                className="flex-1 outline-none px-2 text-gray-700"
-              />
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* ✅ ADDED: Active Filters Display */}
+        {activeFilters.length > 0 && (
+          <div className="mb-6 p-4 bg-white rounded-lg shadow-sm border">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium text-gray-700">Active Filters:</h3>
               <button
-                onClick={handleSearch}
-                disabled={loading}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50"
+                onClick={clearAllFilters}
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
               >
-                {loading ? "..." : "Search"}
+                Clear All
               </button>
             </div>
-
-            {/* Category Grid */}
-            <div className="mt-8">
-              <h2 className="text-xl font-semibold text-gray-800 text-center mb-2">Browse by Category</h2>
-              <p className="text-center text-gray-600 mb-6">Find the perfect talent for your project</p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 max-w-4xl">
-                {[
-                  'Graphics Designer',
-                  'Digital Marketing',
-                  'Telecallers',
-                  'Video Editors',
-                  'Java Developers',
-                  'Interns',
-                  'Data Entry',
-                  'Remote Workers'
-                ].map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => navigate(`/browse-job?category=${encodeURIComponent(cat)}`)}
-                    className="bg-white rounded-2xl shadow hover:shadow-md transition p-5 text-center border border-gray-100"
-                  >
-                    <div className="w-20 h-20 mx-auto rounded-full bg-gray-50 flex items-center justify-center mb-3 border"/>
-                    <div className="font-medium text-gray-800">{cat}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Results Info */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-800">
-                  {getActiveFiltersText()}
-                </h2>
-                <p className="text-gray-600">
-                  {loading ? "Loading..." : `${totalCount} jobs found`}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Job Results */}
-          <div className="space-y-4">
-            {loading ? (
-              <div className="space-y-3">
-                {[...Array(3)].map((_, index) => (
-                  <div key={index} className="bg-white p-4 rounded-lg shadow animate-pulse">
-                    <div className="h-5 bg-gray-200 rounded w-1/3 mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                  </div>
-                ))}
-              </div>
-            ) : jobs.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-4xl mb-4">🔍</div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">No jobs found</h3>
-                <button
-                  onClick={() => {
-                    setSearch("");
-                    window.history.pushState({}, "", "/browse-job");
-                  }}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            <div className="flex flex-wrap gap-2">
+              {activeFilters.map((filter, index) => (
+                <span
+                  key={index}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
                 >
-                  Show All Jobs
-                </button>
-              </div>
-            ) : (
-              jobs.map((job) => {
-                const company = getCompanyInfo(job.company_id);
-                return (
-                  <div
-                    key={job.id}
-                    className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow border border-gray-100"
+                  {filter.label}
+                  <button
+                    onClick={() => removeFilter(filter.type, filter.value)}
+                    className="ml-1 text-blue-600 hover:text-blue-800"
                   >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h3 className="font-bold text-lg text-gray-800 mb-1">
-                          {job.profession}
-                        </h3>
-                        <div className="flex items-center text-gray-600 text-sm mb-2">
-                          <span className="font-medium">{getCompanyName(job.company_id)}</span>
-                          <span className="mx-2">•</span>
-                          <span>{job.location}</span>
-                          <span className="mx-2">•</span>
-                          <span>{formatDate(job.created_at)}</span>
-                        </div>
-                        
-                        {/* ✅ ADDED: Display job description if available */}
-                        {job.description && (
-                          <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                            {job.description.length > 100 
-                              ? `${job.description.substring(0, 100)}...` 
-                              : job.description}
-                          </p>
-                        )}
-                        
-                        <div className="flex items-center gap-3 text-sm">
-                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
-                            💰 {job.salary}
-                          </span>
-                          {job.experience && (
-                            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                              🎯 {job.experience}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col items-end gap-1">
-                        <div className="flex flex-wrap gap-1">
-                          {job.job_type?.slice(0, 2).map((type, i) => (
-                            <span
-                              key={i}
-                              className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full"
-                            >
-                              {type}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="flex gap-2 mt-2">
-                          <button className="px-3 py-1 text-xs border border-gray-300 text-gray-700 rounded hover:bg-gray-50">
-                            Details
-                          </button>
-                          <button className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700">
-                            Apply
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {company && (
-                      <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-3 text-xs text-gray-500">
-                        {company.email && <span>📧 {company.email}</span>}
-                        {company.contact && <span>📱 {company.contact}</span>}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
+                    <X size={14} />
+                  </button>
+                </span>
+              ))}
+            </div>
           </div>
-        </main>
+        )}
+
+        {/* Browse by Category Section */}
+        <div className="mb-8">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Browse by Category</h2>
+            <p className="text-gray-600">Find the perfect talent for your project</p>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-6">
+            {jobCategories.map((category, index) => (
+              <div
+                key={index}
+                onClick={() => handleCategoryClick(category)}
+                className="flex flex-col items-center cursor-pointer group"
+              >
+                <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center mb-3 group-hover:shadow-xl transition-all duration-200 group-hover:scale-105">
+                  <img
+                    src={category.image}
+                    alt={category.name}
+                    className="w-12 h-12 md:w-14 md:h-14 object-contain"
+                  />
+                </div>
+                <h3 className="text-sm md:text-base font-semibold text-gray-800 text-center group-hover:text-blue-600 transition-colors">
+                  {category.name}
+                </h3>
+              </div>
+            ))}
+          </div>
+          
+          <div className="text-center mt-8">
+            <button className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2 rounded-full transition-colors font-medium">
+              Load More
+            </button>
+          </div>
+        </div>
+
+        {/* Matching Jobs Section */}
+        <MatchingJobsSection />
+
+        {/* Results Header */}
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">
+              {activeFilters.length > 0 ? "Filtered Results" : "All Jobs"}
+            </h2>
+            <p className="text-gray-600 mt-1">
+              {loading ? "Loading..." : `${totalCount} jobs found`}
+            </p>
+          </div>
+        </div>
+
+        {/* Job Listings */}
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="bg-white rounded-lg shadow-md p-6 animate-pulse">
+                <div className="h-4 bg-gray-200 rounded mb-4"></div>
+                <div className="h-3 bg-gray-200 rounded mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded mb-4"></div>
+                <div className="h-20 bg-gray-200 rounded"></div>
+              </div>
+            ))}
+          </div>
+        ) : jobs.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="text-gray-500 mb-4">
+              <Search size={48} className="mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2">No jobs found</h3>
+              <p>Try adjusting your search criteria or filters</p>
+            </div>
+            <button
+              onClick={clearAllFilters}
+              className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Clear Filters
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {jobs.map((job) => (
+              <JobCard
+                key={job.id}
+                job={job}
+                onClick={() => {
+                  console.log("Job clicked:", job.id);
+                }}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <Footer />

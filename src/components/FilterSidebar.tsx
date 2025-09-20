@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 export default function FilterSidebar() {
@@ -17,7 +17,13 @@ export default function FilterSidebar() {
     Number(searchParams.get('max_salary')) || 100000
   ]);
 
-  // Match your database job_type values
+  // ✅ ADDED: Update state when URL changes
+  useEffect(() => {
+    setSelectedJobTypes(searchParams.get('job_types')?.split(',').filter(Boolean) || []);
+    setSelectedLocation(searchParams.get('location') || "");
+    setPayRange([0, Number(searchParams.get('max_salary')) || 100000]);
+  }, [searchParams]);
+
   const jobTypes = [
     { label: "Full Time", value: "Full-time" },
     { label: "Part Time", value: "Part-time" },
@@ -38,27 +44,28 @@ export default function FilterSidebar() {
   };
 
   const applyFilters = () => {
-    const params = new URLSearchParams();
-    
-    // Preserve existing search/category if present
-    const currentSearch = searchParams.get('search');
-    const currentCategory = searchParams.get('category');
-    
-    if (currentSearch) params.set('search', currentSearch);
-    if (currentCategory) params.set('category', currentCategory);
+    const params = new URLSearchParams(searchParams); // ✅ UPDATED: Preserve existing params
     
     // Add filter params
     if (selectedJobTypes.length > 0) {
       params.set('job_types', selectedJobTypes.join(','));
-    }
-    if (selectedLocation) {
-      params.set('location', selectedLocation);
-    }
-    if (payRange[1] < 100000) {
-      params.set('max_salary', payRange[1].toString());
+    } else {
+      params.delete('job_types');
     }
     
-    navigate(`/browse-job?${params.toString()}`);
+    if (selectedLocation) {
+      params.set('location', selectedLocation);
+    } else {
+      params.delete('location');
+    }
+    
+    if (payRange[1] < 100000) {
+      params.set('max_salary', payRange[1].toString());
+    } else {
+      params.delete('max_salary');
+    }
+    
+    navigate(`/find-job?${params.toString()}`); // ✅ UPDATED: Use /find-job instead of /browse-job
   };
 
   const clearFilters = () => {
@@ -66,15 +73,13 @@ export default function FilterSidebar() {
     setSelectedLocation("");
     setPayRange([0, 100000]);
     
-    // Keep only search/category params
-    const params = new URLSearchParams();
-    const currentSearch = searchParams.get('search');
-    const currentCategory = searchParams.get('category');
+    // ✅ UPDATED: Keep only search/category params and preserve current URL structure
+    const params = new URLSearchParams(searchParams);
+    params.delete('job_types');
+    params.delete('location');
+    params.delete('max_salary');
     
-    if (currentSearch) params.set('search', currentSearch);
-    if (currentCategory) params.set('category', currentCategory);
-    
-    navigate(`/browse-job${params.toString() ? `?${params.toString()}` : ''}`);
+    navigate(`/find-job${params.toString() ? `?${params.toString()}` : ''}`);
   };
 
   return (

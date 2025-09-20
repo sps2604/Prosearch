@@ -12,6 +12,7 @@ interface JobFormData {
   job_type: string[];
   salary: string;
   experience: string;
+  skills: string; // ✅ ADDED: Skills field
   email: string;
   contact: string;
   website: string;
@@ -26,6 +27,7 @@ const JobPostForm: React.FC = () => {
     job_type: [],
     salary: "",
     experience: "",
+    skills: "", // ✅ ADDED: Skills field
     email: "",
     contact: "",
     website: "",
@@ -190,7 +192,13 @@ const JobPostForm: React.FC = () => {
         console.log("Using existing company with ID:", companyId);
       }
 
-      // 3. Insert job post with company_id
+      // ✅ UPDATED: Parse skills from comma-separated string to array
+      const skillsArray = formData.skills
+        .split(',')
+        .map((skill: string) => skill.trim())
+        .filter((skill: string) => skill.length > 0);
+
+      // 3. Insert job post with company_id and skills
       console.log("Creating job post...");
       const jobInsertPromise = supabase
         .from("Job_Posts")
@@ -201,6 +209,10 @@ const JobPostForm: React.FC = () => {
           job_type: formData.job_type,
           salary: formData.salary.trim(),
           experience: formData.experience.trim() || 'Not specified',
+          skills: skillsArray.length > 0 ? skillsArray : null, // ✅ ADDED: Skills array
+          contact: formData.contact.trim(),
+          email: formData.email.trim(),
+          website: formData.website.trim(),
           company_id: companyId,
         })
         .select("id");
@@ -231,13 +243,14 @@ const JobPostForm: React.FC = () => {
         job_type: [],
         salary: "",
         experience: "",
+        skills: "", // ✅ ADDED: Reset skills field
         email: "",
         contact: "",
         website: "",
       });
 
       // Redirect to success page after a short delay
-      setTimeout(() => navigate("/job-posted"), 1500);
+      setTimeout(() => navigate("/job-posted"), 1500); // ✅ FIXED: Redirect to job-posted pages
 
     } catch (err: any) {
       console.error("Error posting job:", err);
@@ -361,6 +374,21 @@ const JobPostForm: React.FC = () => {
           />
         </div>
 
+        {/* ✅ ADDED: Skills Field */}
+        <div>
+          <input
+            type="text"
+            name="skills"
+            value={formData.skills}
+            onChange={handleChange}
+            placeholder="Required Skills (e.g., React, Node.js, Python)"
+            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Separate multiple skills with commas
+          </p>
+        </div>
+
         <div>
           <input
             type="email"
@@ -414,4 +442,3 @@ const JobPostForm: React.FC = () => {
 };
 
 export default JobPostForm;
-
