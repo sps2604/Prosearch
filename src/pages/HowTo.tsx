@@ -14,7 +14,7 @@ export default function HowTo() {
       case "apply-job":
         return (
           <>
-            <h1 className="text-3xl font-bold mb-4">How to Apply for a Job?</h1>
+            <h1 className="text-3xl font-bold mb-4 text-gray-900">How to Apply for a Job?</h1>
             <p className="mb-8 text-gray-600">
               Follow these steps to land your next opportunity.
             </p>
@@ -42,7 +42,7 @@ export default function HowTo() {
               />
             </div>
             <button
-              className="mt-8 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 block mx-auto"
+              className="mt-8 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors block mx-auto"
               onClick={() => navigate("/find-job")}
             >
               Start Applying Now
@@ -53,7 +53,7 @@ export default function HowTo() {
       case "post-job":
         return (
           <>
-            <h1 className="text-3xl font-bold mb-4">How to Post a Job?</h1>
+            <h1 className="text-3xl font-bold mb-4 text-gray-900">How to Post a Job?</h1>
             <p className="mb-8 text-gray-600">
               Follow these steps to post your first job and attract top talent.
             </p>
@@ -81,7 +81,7 @@ export default function HowTo() {
               />
             </div>
             <button
-              className="mt-8 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 block mx-auto"
+              className="mt-8 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors block mx-auto"
               onClick={() => navigate("/post-job")}
             >
               Post Your First Job
@@ -93,14 +93,25 @@ export default function HowTo() {
         return <SearchProfessionalsSection />;
 
       default:
-        return <h2 className="text-center text-xl">Invalid Topic</h2>;
+        return (
+          <div className="text-center py-12">
+            <h2 className="text-2xl text-gray-900 mb-4">Invalid Topic</h2>
+            <p className="text-gray-600 mb-6">The help topic you're looking for doesn't exist.</p>
+            <button
+              onClick={() => navigate("/help")}
+              className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+            >
+              Back to Help
+            </button>
+          </div>
+        );
     }
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-gray-50">
       <AfterLoginNavbar />
-      <main className="flex-1 px-6 py-12 max-w-5xl mx-auto">
+      <main className="flex-1 px-6 py-12 max-w-5xl mx-auto bg-gray-50">
         {renderContent()}
       </main>
       <Footer />
@@ -119,9 +130,17 @@ type StepCardProps = {
 };
 
 function StepCard({ step, title, icon, text, highlight = false, theme = "blue" }: StepCardProps) {
-  const colorMap: Record<string, { border: string; hoverBorder: string; icon: string; badge: string; highlightBorder: string; highlightIcon: string; highlightBadge: string }> = {
+  const colorMap: Record<string, { 
+    border: string; 
+    hoverBorder: string; 
+    icon: string; 
+    badge: string; 
+    highlightBorder: string; 
+    highlightIcon: string; 
+    highlightBadge: string 
+  }> = {
     blue: {
-      border: "border-gray-100",
+      border: "border-gray-200",
       hoverBorder: "hover:border-blue-300",
       icon: "text-blue-600",
       badge: "bg-blue-50",
@@ -130,7 +149,7 @@ function StepCard({ step, title, icon, text, highlight = false, theme = "blue" }
       highlightBadge: "bg-blue-50",
     },
     green: {
-      border: "border-gray-100",
+      border: "border-gray-200",
       hoverBorder: "hover:border-green-300",
       icon: "text-green-600",
       badge: "bg-green-50",
@@ -139,7 +158,7 @@ function StepCard({ step, title, icon, text, highlight = false, theme = "blue" }
       highlightBadge: "bg-green-50",
     },
     yellow: {
-      border: "border-gray-100",
+      border: "border-gray-200",
       hoverBorder: "hover:border-yellow-300",
       icon: "text-yellow-600",
       badge: "bg-yellow-50",
@@ -171,6 +190,7 @@ function StepCard({ step, title, icon, text, highlight = false, theme = "blue" }
 function SearchProfessionalsSection() {
   const [profession, setProfession] = useState("");
   const [trigger, setTrigger] = useState(0);
+  const navigate = useNavigate();
 
   const handleEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") setTrigger((t) => t + 1);
@@ -178,31 +198,31 @@ function SearchProfessionalsSection() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-2 text-center">Search Professionals</h1>
+      <h1 className="text-3xl font-bold mb-2 text-center text-gray-900">Search Professionals</h1>
       <p className="mb-8 text-gray-600 text-center">
         Find skilled professionals in your domain.
       </p>
 
       {/* Centered single input with button (like screenshot) */}
-      <div className="flex items-center gap-3 justify-center">
+      <div className="flex items-center gap-3 justify-center mb-6">
         <input
           type="text"
           value={profession}
           onChange={(e) => setProfession(e.target.value)}
           onKeyDown={handleEnter}
           placeholder="Search professionals..."
-          className="w-full md:w-[600px] px-4 py-3 border rounded-xl"
+          className="w-full md:w-[600px] px-4 py-3 border border-gray-300 rounded-xl bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
         <button
           onClick={() => setTrigger((t) => t + 1)}
-          className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700"
+          className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium"
         >
           Search
         </button>
       </div>
 
       {/* Results */}
-      <div className="mt-6">
+      <div className="mt-6 bg-white rounded-xl border border-gray-200 p-4">
         <SearchBar
           initialQuery={profession}
           forceSearchKey={trigger}
@@ -234,6 +254,16 @@ function SearchProfessionalsSection() {
           text="Connect and collaborate with professionals directly."
           theme="yellow"
         />
+      </div>
+
+      {/* Back to Help Button */}
+      <div className="text-center mt-8">
+        <button
+          onClick={() => navigate("/help")}
+          className="px-6 py-3 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-colors font-medium"
+        >
+          Back to Help Center
+        </button>
       </div>
     </div>
   );

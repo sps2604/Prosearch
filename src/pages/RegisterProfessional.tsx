@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, User } from "lucide-react";
+import { ArrowLeft, User, Eye, EyeOff } from "lucide-react"; // ✅ ADDED: Eye icons
 import registerIllustration from "../assets/register-illustration.svg";
 import googleIcon from "../assets/google-icon.png";
 import emailIcon from "../assets/email-icon.webp";
@@ -15,15 +15,37 @@ export default function RegisterProfessional() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState(""); // ✅ ADDED: Confirm password
+  const [showPassword, setShowPassword] = useState(false); // ✅ ADDED: Password visibility
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false); // ✅ ADDED: Confirm password visibility
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  // ✅ ADDED: Password validation
+  const validatePasswords = () => {
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long");
+      return false;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return false;
+    }
+    return true;
+  };
 
   // Handle Register with email + password
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setMessage(null);
+    
+    // ✅ ADDED: Validate passwords before submission
+    if (!validatePasswords()) {
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -236,24 +258,77 @@ export default function RegisterProfessional() {
                 required
               />
 
-              {/* Password */}
-              <input
-                id="password"
-                name="password"
-                type="password"
-                placeholder="Create Password (min 6 characters)"
-                className="w-full border border-gray-300 rounded-md px-3 py-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors touch-manipulation"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-              />
+              {/* ✅ UPDATED: Password with Eye Toggle */}
+              <div className="relative">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Create Password (min 6 characters)"
+                  className="w-full border border-gray-300 rounded-md px-3 py-3 pr-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors touch-manipulation"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+
+              {/* ✅ ADDED: Confirm Password with Eye Toggle */}
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Confirm Password"
+                  className={`w-full border rounded-md px-3 py-3 pr-12 text-sm sm:text-base focus:outline-none focus:ring-2 transition-colors touch-manipulation ${
+                    confirmPassword && password !== confirmPassword
+                      ? "border-red-300 focus:ring-red-500 focus:border-red-500"
+                      : confirmPassword && password === confirmPassword
+                      ? "border-green-300 focus:ring-green-500 focus:border-green-500"
+                      : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                  }`}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+
+              {/* ✅ ADDED: Password Match Indicator */}
+              {confirmPassword && (
+                <div className="flex items-center text-xs">
+                  {password === confirmPassword ? (
+                    <span className="text-green-600 flex items-center">
+                      <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                      Passwords match
+                    </span>
+                  ) : (
+                    <span className="text-red-600 flex items-center">
+                      <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+                      Passwords do not match
+                    </span>
+                  )}
+                </div>
+              )}
 
               {/* Primary Register Button */}
               <button
                 type="submit"
                 className="w-full py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 active:bg-blue-800 transition-colors duration-200 font-medium disabled:bg-gray-400 disabled:cursor-not-allowed text-sm sm:text-base touch-manipulation"
-                disabled={loading}
+                disabled={loading || (confirmPassword !== "" && password !== confirmPassword)}
               >
                 {loading ? "Creating Account..." : "Create Professional Account"}
               </button>

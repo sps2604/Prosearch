@@ -36,6 +36,7 @@ export default function ApplyNow() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false); // New state for success popup
   const [companyInfo, setCompanyInfo] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
 
@@ -92,25 +93,28 @@ export default function ApplyNow() {
   };
 
   // ✅ Handle file uploads
-  const uploadFile = async (file: File, folder: string): Promise<string | null> => {
+  const uploadFile = async (
+    file: File,
+    bucketName: 'resumes' | 'coverletters',
+  ): Promise<string | null> => {
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${profile?.id}-${Date.now()}.${fileExt}`;
-      const filePath = `applications/${folder}/${fileName}`;
+      const filePath = `${fileName}`;
 
       const { error } = await supabase.storage
-        .from('documents')
+        .from(bucketName)
         .upload(filePath, file);
 
       if (error) throw error;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('documents')
+        .from(bucketName)
         .getPublicUrl(filePath);
 
       return publicUrl;
     } catch (error) {
-      console.error(`Error uploading ${folder}:`, error);
+      console.error(`Error uploading to ${bucketName} bucket:`, error);
       return null;
     }
   };
@@ -178,7 +182,7 @@ export default function ApplyNow() {
         }
 
         if (coverLetterFile) {
-          const uploadedCoverLetterUrl = await uploadFile(coverLetterFile, 'cover-letters');
+          const uploadedCoverLetterUrl = await uploadFile(coverLetterFile, 'coverletters');
           if (uploadedCoverLetterUrl) {
             finalCoverLetterUrl = uploadedCoverLetterUrl;
           } else {
@@ -205,17 +209,18 @@ export default function ApplyNow() {
         
       if (insertError) throw insertError;
 
-      setSuccess("Application submitted successfully! The employer will contact you if interested.");
+      setShowSuccessPopup(true); // Show success popup
+      setSuccess(null); // Clear previous success message
       
       // Clear files
       setResumeFile(null);
       setCoverLetterFile(null);
       setResumeUrl("");
       
-      // Redirect after 3 seconds
-      setTimeout(() => {
-        navigate("/find-job");
-      }, 3000);
+      // No longer redirect directly, popup will handle navigation
+      // setTimeout(() => {
+      //   navigate("/find-job");
+      // }, 3000);
       
     } catch (err: any) {
       setError(err?.message || "Failed to submit application");
@@ -546,6 +551,60 @@ export default function ApplyNow() {
       </div>
 
       <Footer />
+
+      {/* Success Popup Component (can be moved to a separate file if it grows more complex) */}
+      {showSuccessPopup && (
+        <SuccessPopup
+          isOpen={showSuccessPopup}
+          onNavigate={() => {
+            setShowSuccessPopup(false);
+            navigate("/find-job");
+          }}
+        />
+      )}
     </div>
   );
 }
+
+// Success Popup Component (can be moved to a separate file if it grows more complex)
+interface SuccessPopupProps {
+  isOpen: boolean;
+  onNavigate: () => void;
+}
+
+const SuccessPopup: React.FC<SuccessPopupProps> = ({ isOpen, onNavigate }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full text-center">
+        <div className="text-green-500 mb-4">
+          <svg
+            className="mx-auto h-16 w-16 text-green-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            ></path>
+          </svg>
+        </div>
+        <h3 className="text-xl font-semibold text-gray-900 mb-3">Application Submitted!</h3>
+        <p className="text-gray-600 mb-5">
+          Your application has been successfully submitted. The employer will contact you if interested.
+        </p>
+        <button
+          onClick={onNavigate}
+          className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          Browse More Jobs
+        </button>
+      </div>
+    </div>
+  );
+};

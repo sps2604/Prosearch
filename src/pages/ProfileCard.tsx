@@ -65,19 +65,17 @@ export default function ProfileCard() {
           return;
         }
 
-        // ✅ FIXED: Removed .single() and added .limit(1)
         const { data: userProfileData, error: userProfileError } =
           await supabase
             .from("user_profiles")
             .select("*")
             .eq("user_id", user.id)
             .order('created_at', { ascending: false })
-            .limit(1); // ✅ Changed from .single()
+            .limit(1);
 
         if (userProfileError) {
           setError("Error fetching profile: " + userProfileError.message);
         } else {
-          // ✅ FIXED: Access data as array
           setUserProfile(userProfileData?.[0] as UserProfile || null);
         }
       } catch {
@@ -90,7 +88,6 @@ export default function ProfileCard() {
     fetchProfile();
   }, [navigate]);
 
-  // ✅ Fixed download function
   const handleDownload = async (format: "pdf" | "png") => {
     if (!cardRef.current || !userProfile) return;
 
@@ -127,7 +124,6 @@ export default function ProfileCard() {
         const pageHeight = pdf.internal.pageSize.getHeight();
 
         const imgProps = pdf.getImageProperties(dataUrl);
-        // Keep margins to avoid clipping
         const margin = 10;
         let imgWidth = pageWidth - margin * 2;
         let imgHeight = (imgProps.height * imgWidth) / imgProps.width;
@@ -155,7 +151,6 @@ export default function ProfileCard() {
     }
   };
 
-  // ✅ Fixed share function
   const handleShare = async () => {
     const safeName = encodeURIComponent(userProfile?.name ?? "");
     const profileUrl = `${window.location.origin}/public-profile/${safeName}`;
@@ -171,7 +166,6 @@ export default function ProfileCard() {
         console.log('Share failed:', error);
       }
     } else {
-      // Fallback to copy to clipboard
       try {
         await navigator.clipboard.writeText(profileUrl);
         alert('Profile link copied to clipboard!');
@@ -182,33 +176,52 @@ export default function ProfileCard() {
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <p className="text-center text-lg">Loading profile card...</p>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-900 text-lg">Loading profile card...</p>
+      </div>
     </div>
   );
 
   if (error) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <p className="text-center text-red-500 text-lg">{error}</p>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center bg-red-50 border border-red-200 rounded-lg p-6">
+        <p className="text-red-600 text-lg">{error}</p>
+        <button
+          onClick={() => navigate("/profile")}
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          Back to Profile
+        </button>
+      </div>
     </div>
   );
 
   if (!userProfile) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <p className="text-center text-lg">No profile found</p>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <p className="text-gray-900 text-lg mb-4">No profile found</p>
+        <button
+          onClick={() => navigate("/create-profile")}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          Create Profile
+        </button>
+      </div>
     </div>
   );
 
   return (
-    <>
+    <div className="min-h-screen bg-gray-50">
       <AfterLoginNavbar />
 
-      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 bg-gray-50">
         {/* Desktop View */}
         <div className="hidden sm:flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
           <button
             onClick={() => navigate("/profile")}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 sm:py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 sm:py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors bg-white border border-gray-200"
           >
             <ArrowLeft size={16} />
             Back to Profile
@@ -248,7 +261,7 @@ export default function ProfileCard() {
         <div className="flex sm:hidden items-center justify-between mb-6">
           <button
             onClick={() => navigate("/profile")}
-            className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors bg-white border border-gray-200"
           >
             <ArrowLeft size={20} />
           </button>
@@ -256,16 +269,13 @@ export default function ProfileCard() {
           <div className="relative">
             <button
               onClick={() => setShowActions(!showActions)}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors bg-white border border-gray-200"
             >
               <MoreVertical size={20} />
             </button>
 
             {showActions && (
-              <div
-                className="absolute right-0 top-12 w-48 rounded-lg shadow-lg border overflow-hidden z-10"
-                style={{ backgroundColor: "#ffffff" }}
-              >
+              <div className="absolute right-0 top-12 w-48 rounded-lg shadow-lg border overflow-hidden z-10 bg-white border-gray-200">
                 <button
                   onClick={() => {
                     handleShare();
@@ -310,8 +320,7 @@ export default function ProfileCard() {
         {/* Profile Card */}
         <div
           ref={cardRef}
-          className="w-full max-w-md mx-auto rounded-2xl shadow-2xl overflow-hidden"
-          style={{ backgroundColor: "#ffffff" }}
+          className="w-full max-w-md mx-auto rounded-2xl shadow-2xl overflow-hidden bg-white border border-gray-200"
         >
           <div
             className="relative px-6 py-8 text-white"
@@ -350,7 +359,7 @@ export default function ProfileCard() {
             </h1>
           </div>
 
-          <div className="px-6 py-6" style={{ backgroundColor: "#ffffff" }}>
+          <div className="px-6 py-6 bg-white">
             <div className="mb-6">
               <h2
                 className="text-lg font-semibold mb-3"
@@ -516,6 +525,6 @@ export default function ProfileCard() {
           onClick={() => setShowActions(false)}
         />
       )}
-    </>
+    </div>
   );
 }

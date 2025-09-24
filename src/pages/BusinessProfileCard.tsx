@@ -68,14 +68,14 @@ export default function BusinessProfileCard() {
           await supabase
             .from("businesses")
             .select("*")
-            .eq("user_id", user.id) // ✅ FIXED: Use user_id instead of id
+            .eq("user_id", user.id)
             .order('created_at', { ascending: false })
             .limit(1);
 
         if (businessProfileError) {
           setError("Error fetching profile: " + businessProfileError.message);
         } else {
-          setBusinessProfile(businessProfileData?.[0] as BusinessProfileData || null); // ✅ FIXED: Array access
+          setBusinessProfile(businessProfileData?.[0] as BusinessProfileData || null);
         }
       } catch {
         setError("Unexpected error occurred");
@@ -151,58 +151,76 @@ export default function BusinessProfileCard() {
   };
 
   const handleShare = async () => {
-  const safeName = encodeURIComponent(businessProfile?.business_name ?? "");
-  const profileUrl = `${window.location.origin}/public-profile/${safeName}`; // ✅ FIXED: Changed from public-business-profile
+    const safeName = encodeURIComponent(businessProfile?.business_name ?? "");
+    const profileUrl = `${window.location.origin}/public-business-profile/${safeName}`;
 
-  if (navigator.share) {
-    try {
-      await navigator.share({
-        title: `${businessProfile?.business_name}'s Profile`,
-        text: `Check out ${businessProfile?.business_name}'s business profile`,
-        url: profileUrl,
-      });
-    } catch (error) {
-      console.log('Share failed:', error);
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${businessProfile?.business_name}'s Profile`,
+          text: `Check out ${businessProfile?.business_name}'s business profile`,
+          url: profileUrl,
+        });
+      } catch (error) {
+        console.log('Share failed:', error);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(profileUrl);
+        alert('Profile link copied to clipboard!');
+      } catch (error) {
+        console.error('Failed to copy link:', error);
+      }
     }
-  } else {
-    try {
-      await navigator.clipboard.writeText(profileUrl);
-      alert('Profile link copied to clipboard!');
-    } catch (error) {
-      console.error('Failed to copy link:', error);
-    }
-  }
-};
-
+  };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <p className="text-center text-lg">Loading business card...</p>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-900 text-lg">Loading business card...</p>
+      </div>
     </div>
   );
 
   if (error) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <p className="text-center text-red-500 text-lg">{error}</p>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center bg-red-50 border border-red-200 rounded-lg p-6">
+        <p className="text-red-600 text-lg">{error}</p>
+        <button
+          onClick={() => navigate("/business-profile")}
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          Back to Profile
+        </button>
+      </div>
     </div>
   );
 
   if (!businessProfile) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <p className="text-center text-lg">No business profile found</p>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <p className="text-gray-900 text-lg mb-4">No business profile found</p>
+        <button
+          onClick={() => navigate("/create-business-profile")}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          Create Business Profile
+        </button>
+      </div>
     </div>
   );
 
   return (
-    <>
+    <div className="min-h-screen bg-gray-50">
       <AfterLoginNavbar />
 
-      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 bg-gray-50">
         {/* Desktop View */}
         <div className="hidden sm:flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
           <button
             onClick={() => navigate("/business-profile")}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 sm:py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 sm:py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors bg-white border border-gray-200"
           >
             <ArrowLeft size={16} />
             Back to Profile
@@ -242,7 +260,7 @@ export default function BusinessProfileCard() {
         <div className="flex sm:hidden items-center justify-between mb-6">
           <button
             onClick={() => navigate("/business-profile")}
-            className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors bg-white border border-gray-200"
           >
             <ArrowLeft size={20} />
           </button>
@@ -250,16 +268,13 @@ export default function BusinessProfileCard() {
           <div className="relative">
             <button
               onClick={() => setShowActions(!showActions)}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors bg-white border border-gray-200"
             >
               <MoreVertical size={20} />
             </button>
 
             {showActions && (
-              <div
-                className="absolute right-0 top-12 w-48 rounded-lg shadow-lg border overflow-hidden z-10"
-                style={{ backgroundColor: "#ffffff" }}
-              >
+              <div className="absolute right-0 top-12 w-48 rounded-lg shadow-lg border overflow-hidden z-10 bg-white border-gray-200">
                 <button
                   onClick={() => {
                     handleShare();
@@ -304,8 +319,7 @@ export default function BusinessProfileCard() {
         {/* Profile Card */}
         <div
           ref={cardRef}
-          className="w-full max-w-md mx-auto rounded-2xl shadow-2xl overflow-hidden"
-          style={{ backgroundColor: "#ffffff" }}
+          className="w-full max-w-md mx-auto rounded-2xl shadow-2xl overflow-hidden bg-white border border-gray-200"
         >
           <div
             className="relative px-6 py-8 text-white"
@@ -342,9 +356,12 @@ export default function BusinessProfileCard() {
             <h1 className="text-2xl font-bold text-center text-white mb-1">
               {businessProfile.business_name}
             </h1>
+            <p className="text-center text-white/90 text-sm">
+              {businessProfile.industry}
+            </p>
           </div>
 
-          <div className="px-6 py-6" style={{ backgroundColor: "#ffffff" }}>
+          <div className="px-6 py-6 bg-white">
             <div className="mb-6">
               <h2
                 className="text-lg font-semibold mb-3"
@@ -510,6 +527,6 @@ export default function BusinessProfileCard() {
           onClick={() => setShowActions(false)}
         />
       )}
-    </>
+    </div>
   );
 }

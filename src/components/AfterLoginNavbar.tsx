@@ -43,7 +43,7 @@ export default function AfterLoginNavbar() {
       const { data: businessData } = await supabase
         .from("businesses")
         .select("user_type")
-        .eq("user_id", user.id) // ✅ Use user_id
+        .eq("user_id", user.id)
         .single();
       
       if (businessData?.user_type) {
@@ -60,7 +60,7 @@ export default function AfterLoginNavbar() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setProfile(null); // Clear user profile from context
+    setProfile(null);
     navigate("/");
   };
 
@@ -68,6 +68,15 @@ export default function AfterLoginNavbar() {
     navigate(path);
     setMenuOpen(false);
     setOpen(false);
+  };
+
+  // ✅ NEW: Smart notifications routing based on user type
+  const handleNotificationsNav = () => {
+    if (effectiveUserType === "business") {
+      handleNav("/business-notifications");
+    } else {
+      handleNav("/notifications");
+    }
   };
 
   return (
@@ -117,8 +126,9 @@ export default function AfterLoginNavbar() {
           <FaRegQuestionCircle className="text-xl mb-1" />
           Help
         </button>
+        {/* ✅ UPDATED: Smart notifications button */}
         <button
-          onClick={() => handleNav("/notifications")}
+          onClick={handleNotificationsNav}
           className="flex flex-col items-center text-xs hover:text-red-600 p-2 rounded-lg hover:bg-red-50 relative"
         >
           <IoMdNotificationsOutline className="text-xl mb-1" />
@@ -159,6 +169,26 @@ export default function AfterLoginNavbar() {
                       Profile
                     </button>
                   </li>
+                  {effectiveUserType === "business" && (
+                    <li>
+                      <button
+                        onClick={() => handleNav("/my-job-posts")}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                      >
+                        My Job Posts
+                      </button>
+                    </li>
+                  )}
+                  {effectiveUserType === "professional" && (
+                    <li>
+                      <button
+                        onClick={() => handleNav("/my-applied-jobs")}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                      >
+                        My Applied Jobs
+                      </button>
+                    </li>
+                  )}
                   <li>
                     <button
                       onClick={() => handleNav("/settings")}
@@ -221,8 +251,9 @@ export default function AfterLoginNavbar() {
           >
             <FaRegQuestionCircle /> Help
           </button>
+          {/* ✅ UPDATED: Smart notifications button for mobile */}
           <button
-            onClick={() => handleNav("/notifications")}
+            onClick={handleNotificationsNav}
             className="w-full flex items-center gap-2 py-2 px-3 hover:bg-red-50 rounded-md"
           >
             <IoMdNotificationsOutline /> Alerts
@@ -242,6 +273,22 @@ export default function AfterLoginNavbar() {
             >
               Profile
             </button>
+            {effectiveUserType === "business" && (
+              <button
+                onClick={() => handleNav("/my-job-posts")}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded-md"
+              >
+                My Job Posts
+              </button>
+            )}
+            {effectiveUserType === "professional" && (
+              <button
+                onClick={() => handleNav("/my-applied-jobs")}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded-md"
+              >
+                My Applied Jobs
+              </button>
+            )}
             <button
               onClick={() => handleNav("/settings")}
               className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded-md"
