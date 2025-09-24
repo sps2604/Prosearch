@@ -1,5 +1,4 @@
-import React from "react";
-import { User, Building2, Search, PlusCircle, ArrowRight, CheckCircle } from "lucide-react";
+import { User, Building2, Search, ArrowRight, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 
