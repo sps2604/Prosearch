@@ -5,6 +5,16 @@ import AfterLoginNavbar from "../components/AfterLoginNavbar";
 import Footer from "../components/footer";
 import { supabase } from "../lib/supabaseClient";
 
+// Helper function to parse salary string to a number
+const parseSalary = (salaryString: string): number => {
+  // Example: "₹50,000 - ₹70,000" -> 50000
+  // Example: "80,000" -> 80000
+  // Example: "Negotiable" -> 0
+  const numericPart = salaryString.replace(/[^0-9.]/g, ''); // Keep only digits and dots
+  const match = numericPart.match(/(\d+(\.\d+)?)/); // Extract the first number
+  return match ? parseFloat(match[1]) : 0;
+};
+
 interface Job {
   id: number;
   profession: string;
@@ -34,29 +44,41 @@ export default function BrowseJob() {
   const [totalCount, setTotalCount] = useState(0);
   const [hasSearched, setHasSearched] = useState(false);
 
+  // New state for salary range
+  const [salaryRange, setSalaryRange] = useState({ min: 0, max: 200000 });
+
   // Set search term from URL query params
   useEffect(() => {
     const searchQuery = searchParams.get("search") || "";
     const categoryQuery = searchParams.get("category") || "";
-
     if (searchQuery) setSearch(searchQuery);
     else if (categoryQuery) setSearch(categoryQuery);
   }, [searchParams]);
 
+  // Calculate and update salary range from jobs
+  useEffect(() => {
+    if (jobs.length > 0) {
+      const salaries = jobs.map(job => parseSalary(job.salary)).filter(s => s > 0);
+      if (salaries.length > 0) {
+        const min = Math.min(...salaries);
+        const max = Math.max(...salaries);
+        setSalaryRange({ min, max });
+      }
+    }
+  }, [jobs]);
+
   // ULTRA FAST - Separate queries for better performance
   const fetchJobs = async () => {
     setLoading(true);
-    console.log("🚀 Fast fetch starting...");
-
     try {
       // Get filter parameters
       const searchQuery = searchParams.get("search") || search;
       const categoryQuery = searchParams.get("category") || "";
       const jobTypes = searchParams.get("job_types")?.split(",").filter(Boolean) || [];
       const locationFilter = searchParams.get("location") || "";
+      const minSalary = searchParams.get("min_salary");
 
-      // If nothing provided, don't preload jobs; show hero UI
-      if (!searchQuery.trim() && !categoryQuery.trim() && jobTypes.length === 0 && !locationFilter.trim()) {
+      if (!searchQuery.trim() && !categoryQuery.trim() && jobTypes.length === 0 && !locationFilter.trim() && !minSalary) {
         setJobs([]);
         setCompanies({});
         setTotalCount(0);
@@ -68,8 +90,14 @@ export default function BrowseJob() {
       let jobQuery = supabase
         .from("Job_Posts")
         .select("id, profession, description, location, salary, experience, job_type, created_at, company_id")
-        .order("created_at", { ascending: false })
-        .limit(15);
+        .order("created_at", { ascending: false });
+
+      // Limit to 15 unless filtering by salary, then fetch more to get all higher salary jobs
+      if (!minSalary) {
+        jobQuery = jobQuery.limit(15);
+      } else {
+        jobQuery = jobQuery.limit(1000); // Fetch more when filtering by salary
+      }
 
       // Apply only the most important filters
       if (searchQuery.trim()) {
@@ -87,15 +115,11 @@ export default function BrowseJob() {
         jobQuery = jobQuery.contains('job_type', [jobTypes[0]]);
       }
 
-      console.log("🔄 Fetching jobs...");
       const { data: jobData, error: jobError } = await jobQuery;
 
       if (jobError) {
-        console.error("❌ Job fetch error:", jobError);
         throw jobError;
       }
-
-      console.log("✅ Jobs fetched:", jobData?.length || 0);
 
       if (!jobData || jobData.length === 0) {
         setJobs([]);
@@ -105,18 +129,25 @@ export default function BrowseJob() {
         return;
       }
 
+      // Filter by minimum salary client-side
+      let filteredJobs = jobData;
+      if (minSalary) {
+        const minSalaryNum = parseFloat(minSalary);
+        filteredJobs = filteredJobs.filter(job => parseSalary(job.salary) >= minSalaryNum);
+      }
+
       // STEP 2: Fast company query for only needed companies
-      const companyIds = [...new Set(jobData.map(job => job.company_id).filter(Boolean))];
-      
+      const companyIds = [...new Set(filteredJobs.map(job => job.company_id).filter(Boolean))];
+
       if (companyIds.length > 0) {
-        console.log("🔄 Fetching companies for:", companyIds.length, "companies");
         const { data: companyData, error: companyError } = await supabase
           .from("Companies")
           .select("id, name, email, contact, website")
           .in("id", companyIds);
 
         if (companyError) {
-          console.warn("⚠️ Company fetch error:", companyError);
+          // Just log; non-blocking
+          console.warn("Company fetch error:", companyError);
         }
 
         // Create company lookup map
@@ -125,18 +156,13 @@ export default function BrowseJob() {
           companyMap[company.id] = company;
         });
         setCompanies(companyMap);
-        console.log("✅ Companies fetched:", Object.keys(companyMap).length);
       }
 
-      setJobs(jobData);
-      setTotalCount(jobData.length);
-
+      // ✅ FIXED: Set jobs to filteredJobs (based on salary) and update totalCount accordingly
+      setJobs(filteredJobs);
+      setTotalCount(filteredJobs.length);
     } catch (error) {
-      console.error("❌ Fetch error:", error);
-      
-      // ✅ FIXED: Ultra-simple fallback with ALL required fields
       try {
-        console.log("🔄 Trying simple fallback...");
         const { data: fallbackData } = await supabase
           .from("Job_Posts")
           .select("id, profession, description, location, salary, experience, job_type, created_at, company_id")
@@ -145,15 +171,11 @@ export default function BrowseJob() {
 
         setJobs(fallbackData || []);
         setTotalCount(fallbackData?.length || 0);
-        console.log("✅ Fallback loaded:", fallbackData?.length || 0);
-        
       } catch (fallbackError) {
-        console.error("❌ Fallback failed:", fallbackError);
         setJobs([]);
         setTotalCount(0);
       }
     }
-
     setLoading(false);
   };
 
@@ -229,7 +251,7 @@ export default function BrowseJob() {
       <div className="flex flex-1 bg-gray-50">
         {/* Sidebar */}
         <aside className="w-1/4 p-4 border-r bg-white shadow-sm">
-          <FilterSidebar />
+          <FilterSidebar salaryRange={salaryRange} />
         </aside>
 
         {/* Main Content */}
@@ -325,16 +347,15 @@ export default function BrowseJob() {
                           <span className="mx-2">•</span>
                           <span>{formatDate(job.created_at)}</span>
                         </div>
-                        
                         {/* ✅ DISPLAY DESCRIPTION if available */}
                         {job.description && (
                           <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                            {job.description.length > 100 
-                              ? `${job.description.substring(0, 100)}...` 
+                            {job.description.length > 100
+                              ? `${job.description.substring(0, 100)}...`
                               : job.description}
                           </p>
                         )}
-                        
+
                         <div className="flex items-center gap-3 text-sm">
                           <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
                             💰 {job.salary}
@@ -368,7 +389,6 @@ export default function BrowseJob() {
                         </div>
                       </div>
                     </div>
-
                     {company && (
                       <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-3 text-xs text-gray-500">
                         {company.email && <span>📧 {company.email}</span>}
@@ -382,7 +402,6 @@ export default function BrowseJob() {
           </div>
         </main>
       </div>
-
       <Footer />
     </div>
   );

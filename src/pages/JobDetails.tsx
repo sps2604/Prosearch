@@ -250,6 +250,13 @@ export default function JobDetails() {
     navigate("/apply-now", { state: { job } });
   };
 
+  const handleCompanyClick = () => {
+    const companyName = companyInfo?.business_name || companyInfo?.name;
+    if (companyName) {
+      navigate(`/public-business-profile/${encodeURIComponent(companyName)}`);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -316,12 +323,13 @@ export default function JobDetails() {
                   </h1>
                   
                   {/* Company Info */}
-                  <div className="flex items-center gap-2 mb-3">
+                  <button onClick={handleCompanyClick} disabled={!companyInfo} className="flex items-center gap-2 mb-3 text-left disabled:cursor-default group">
                     <Building2 size={18} className="text-gray-400" />
-                    <span className="text-lg text-gray-700 font-medium">
+                    <span className="text-lg text-gray-700 font-medium group-hover:text-blue-600 group-hover:underline transition-colors">
                       {companyInfo?.business_name || companyInfo?.name || job.company_name || `Company ID: ${job.company_id}`}
                     </span>
-                  </div>
+                  </button>
+
                   
                   {/* Date Information */}
                   <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-4">
@@ -478,28 +486,30 @@ export default function JobDetails() {
                   About Company
                 </h3>
                 <div className="space-y-4">
-                  {/* Company Logo/Avatar */}
-                  <div className="flex items-center gap-3">
-                    {companyInfo.logo_url ? (
-                      <img
-                        src={companyInfo.logo_url}
-                        alt="Company Logo"
-                        className="w-12 h-12 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-                        <Building2 size={20} className="text-gray-500" />
-                      </div>
-                    )}
+                  {/* Company Logo/Avatar - Now clickable */}
+                  <button onClick={handleCompanyClick} disabled={!companyInfo} className="flex items-center gap-3 text-left disabled:cursor-default group w-full">
+                    <div className="flex-shrink-0">
+                      {companyInfo.logo_url ? (
+                        <img
+                          src={companyInfo.logo_url}
+                          alt="Company Logo"
+                          className="w-12 h-12 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                          <Building2 size={20} className="text-gray-500" />
+                        </div>
+                      )}
+                    </div>
                     <div>
-                      <h4 className="font-medium text-gray-900">
+                      <h4 className="font-medium text-gray-900 group-hover:text-blue-600 group-hover:underline transition-colors">
                         {companyInfo.business_name || companyInfo.name}
                       </h4>
                       <p className="text-sm text-gray-600">
                         {companyInfo.industry || "Company"}
                       </p>
-                    </div>
-                  </div>
+                      </div>
+                  </button>
 
                   {/* Company Summary */}
                   {companyInfo.summary && (

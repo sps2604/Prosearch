@@ -195,14 +195,6 @@ export default function ProfilePage() {
                 <Eye size={16} />
                 View
               </button>
-              <button
-                onClick={handleDownloadPdf}
-                disabled={downloading}
-                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm disabled:opacity-50"
-              >
-                <Download size={16} />
-                {downloading ? "Downloading..." : "PDF"}
-              </button>
             </div>
           </div>
         </div>

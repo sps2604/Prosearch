@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, User, Eye, EyeOff } from "lucide-react"; // ✅ ADDED: Eye icons
+import { ArrowLeft, User, Eye, EyeOff } from "lucide-react";
 import registerIllustration from "../assets/register-illustration.svg";
 import googleIcon from "../assets/google-icon.png";
 import emailIcon from "../assets/email-icon.webp";
@@ -9,20 +9,20 @@ import { supabase } from "../lib/supabaseClient";
 
 export default function RegisterProfessional() {
   const navigate = useNavigate();
-  
+
   // State for form
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState(""); // ✅ ADDED: Confirm password
-  const [showPassword, setShowPassword] = useState(false); // ✅ ADDED: Password visibility
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false); // ✅ ADDED: Confirm password visibility
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  // ✅ ADDED: Password validation
+  // Password validation
   const validatePasswords = () => {
     if (password.length < 6) {
       setError("Password must be at least 6 characters long");
@@ -40,8 +40,8 @@ export default function RegisterProfessional() {
     e.preventDefault();
     setError(null);
     setMessage(null);
-    
-    // ✅ ADDED: Validate passwords before submission
+
+    // Validate passwords before submission
     if (!validatePasswords()) {
       return;
     }
@@ -49,7 +49,31 @@ export default function RegisterProfessional() {
     setLoading(true);
 
     try {
-      console.log('Starting professional registration...');
+      console.log("Checking if email already exists...");
+
+      // ✅ Check if email already exists in user_profiles table
+      const { data: existingUsers, error: queryError } = await supabase
+        .from("user_profiles")
+        .select("email")
+        .eq("email", email)
+        .limit(1);
+
+      if (queryError) {
+        console.error("Error checking email:", queryError);
+        throw new Error("Error checking email. Please try again.");
+      }
+
+      // ✅ If email already exists, show error and redirect to login
+      if (existingUsers && existingUsers.length > 0) {
+        setError("⚠️ This email is already registered. Please login instead.");
+        setLoading(false);
+        setTimeout(() => {
+          navigate("/login");
+        }, 2000);
+        return;
+      }
+
+      console.log("Email not found, proceeding with professional registration...");
 
       const userData = {
         first_name: firstName,
@@ -68,17 +92,16 @@ export default function RegisterProfessional() {
       });
 
       if (signUpError) {
-        console.error('SignUp Error:', signUpError);
+        console.error("SignUp Error:", signUpError);
         throw signUpError;
       }
 
-      console.log('Professional SignUp successful:', data);
+      console.log("Professional SignUp successful:", data);
 
       // Create professional profile record immediately
       if (data.user) {
-        const { error: profileError } = await supabase
-          .from("user_profiles")
-          .insert([{
+        const { error: profileError } = await supabase.from("user_profiles").insert([
+          {
             user_id: data.user.id,
             name: `${firstName} ${lastName}`,
             user_type: "professional",
@@ -98,9 +121,10 @@ export default function RegisterProfessional() {
             twitter: "",
             github: "",
             website: "",
-            google_my_business: ""
-          }]);
-        if (profileError) console.error('Profile creation error:', profileError);
+            google_my_business: "",
+          },
+        ]);
+        if (profileError) console.error("Profile creation error:", profileError);
       }
 
       // Check if user needs email confirmation
@@ -115,7 +139,7 @@ export default function RegisterProfessional() {
         setMessage("✅ Registration successful! Please check your email to confirm your account.");
       }
     } catch (err: any) {
-      console.error('Registration error:', err);
+      console.error("Registration error:", err);
       setError(err.message || "Something went wrong during registration");
     } finally {
       setLoading(false);
@@ -126,7 +150,7 @@ export default function RegisterProfessional() {
   const handleGoogleRegister = async () => {
     setError(null);
     setMessage(null);
-    
+
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -139,11 +163,11 @@ export default function RegisterProfessional() {
       });
 
       if (error) {
-        console.error('Google OAuth Error:', error);
+        console.error("Google OAuth Error:", error);
         setError(error.message);
       }
     } catch (err: any) {
-      console.error('Google registration error:', err);
+      console.error("Google registration error:", err);
       setError("Failed to register with Google");
     }
   };
@@ -159,45 +183,61 @@ export default function RegisterProfessional() {
     setMessage(null);
 
     try {
+      // ✅ Check if email already exists before sending magic link
+      const { data: existingUsers, error: queryError } = await supabase
+        .from("user_profiles")
+        .select("email")
+        .eq("email", email)
+        .limit(1);
+
+      if (queryError) {
+        console.error("Error checking email:", queryError);
+        setError("Error checking email. Please try again.");
+        return;
+      }
+
+      // ✅ If email already exists, show error and redirect to login
+      if (existingUsers && existingUsers.length > 0) {
+        setError("⚠️ This email is already registered. Please login instead.");
+        setTimeout(() => {
+          navigate("/login");
+        }, 2000);
+        return;
+      }
+
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          data: { 
-            first_name: firstName, 
+          data: {
+            first_name: firstName,
             last_name: lastName,
-            user_type: "professional"
+            user_type: "professional",
           },
           emailRedirectTo: `${window.location.origin}/create-profile`,
         },
       });
 
       if (error) {
-        console.error('Magic Link Error:', error);
+        console.error("Magic Link Error:", error);
         setError(error.message);
       } else {
         setMessage("📩 Magic Link sent! Check your email.");
       }
     } catch (err: any) {
-      console.error('Magic link error:', err);
+      console.error("Magic link error:", err);
       setError("Failed to send magic link");
     }
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* Navbar */}
       <Navbar />
 
-      {/* Page Content */}
       <div className="flex flex-1 items-center justify-center px-4 py-6 sm:py-8">
         <div className="container flex flex-col lg:flex-row items-center max-w-6xl gap-8 lg:gap-12">
           {/* Left Illustration - Hidden on Mobile */}
           <div className="hidden lg:flex flex-1 justify-center">
-            <img
-              src={registerIllustration}
-              alt="Professional Registration"
-              className="w-130 max-w-lg"
-            />
+            <img src={registerIllustration} alt="Professional Registration" className="w-130 max-w-lg" />
           </div>
 
           {/* Right Form - Full width on mobile */}
@@ -258,7 +298,7 @@ export default function RegisterProfessional() {
                 required
               />
 
-              {/* ✅ UPDATED: Password with Eye Toggle */}
+              {/* Password with Eye Toggle */}
               <div className="relative">
                 <input
                   id="password"
@@ -280,7 +320,7 @@ export default function RegisterProfessional() {
                 </button>
               </div>
 
-              {/* ✅ ADDED: Confirm Password with Eye Toggle */}
+              {/* Confirm Password with Eye Toggle */}
               <div className="relative">
                 <input
                   id="confirmPassword"
@@ -307,7 +347,7 @@ export default function RegisterProfessional() {
                 </button>
               </div>
 
-              {/* ✅ ADDED: Password Match Indicator */}
+              {/* Password Match Indicator */}
               {confirmPassword && (
                 <div className="flex items-center text-xs">
                   {password === confirmPassword ? (
@@ -368,7 +408,7 @@ export default function RegisterProfessional() {
                   <p className="text-red-600 text-sm">{error}</p>
                 </div>
               )}
-              
+
               {message && (
                 <div className="p-3 bg-green-50 border border-green-200 rounded-md">
                   <p className="text-green-600 text-sm">{message}</p>

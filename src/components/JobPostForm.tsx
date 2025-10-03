@@ -110,6 +110,38 @@ const JobPostForm: React.FC<JobPostFormProps> = ({
     }
   }, [isEditing, initialData]);
 
+  // ✅ NEW: Effect to pre-fill form with business data for new posts
+  useEffect(() => {
+    // Only run for new job posts, not when editing
+    if (!isEditing && profile?.user_type === "business") {
+      const fetchBusinessDetails = async () => {
+        try {
+          const { data, error } = await supabase
+            .from("businesses")
+            .select("business_name, email, mobile, website")
+            .eq("user_id", profile.id)
+            .single();
+
+          if (error) throw error;
+
+          if (data) {
+            setFormData(prev => ({
+              ...prev,
+              company_name: data.business_name || prev.company_name,
+              email: data.email || prev.email,
+              contact: data.mobile || prev.contact,
+              website: data.website || prev.website,
+            }));
+          }
+        } catch (err) {
+          console.error("Error pre-filling business details:", err);
+        }
+      };
+
+      fetchBusinessDetails();
+    }
+  }, [isEditing, profile]);
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {

@@ -1,128 +1,122 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 
-export default function FilterSidebar() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+const jobTypesList = ["Full-time", "Part-time", "Contract", "Internship", "Remote"];
+
+// ✅ ADDED: Hardcoded list of locations for the dropdown
+const locationsList = [
+  "Mumbai", "Delhi", "Bangalore", "Hyderabad", "Pune", "Chennai", "Kolkata", "Ahmedabad", "Remote"
+];
+
+interface FilterSidebarProps {
+  salaryRange: {
+    min: number;
+    max: number;
+  };
+}
+
+const FilterSidebar: React.FC<FilterSidebarProps> = ({ salaryRange }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
   
   // Initialize filters from URL params
   const [selectedJobTypes, setSelectedJobTypes] = useState<string[]>(
     searchParams.get('job_types')?.split(',').filter(Boolean) || []
   );
-  const [selectedLocation, setSelectedLocation] = useState(
+  // ✅ ADDED: State for location filter
+  const [selectedLocation, setSelectedLocation] = useState<string>(
     searchParams.get('location') || ""
   );
-  const [payRange, setPayRange] = useState([
-    0, 
-    Number(searchParams.get('max_salary')) || 100000
-  ]);
 
-  // ✅ ADDED: Update state when URL changes
+  // State for salary slider
+  const [minSalary, setMinSalary] = useState<number>(
+    parseInt(searchParams.get("min_salary") || salaryRange.min.toString(), 10)
+  );
+
+  // ✅ CONSOLIDATED: Update all filter states when URL or salaryRange prop changes
   useEffect(() => {
     setSelectedJobTypes(searchParams.get('job_types')?.split(',').filter(Boolean) || []);
     setSelectedLocation(searchParams.get('location') || "");
-    setPayRange([0, Number(searchParams.get('max_salary')) || 100000]);
-  }, [searchParams]);
+    const currentMinSalary = parseInt(searchParams.get("min_salary") || salaryRange.min.toString(), 10);
+    setMinSalary(currentMinSalary);
+  }, [salaryRange, searchParams]);
 
-  const jobTypes = [
-    { label: "Full Time", value: "Full-time" },
-    { label: "Part Time", value: "Part-time" },
-    { label: "Freelance", value: "Freelance" },
-    { label: "Internship", value: "Internship" },
-    { label: "Remote", value: "Remote" }
-  ];
-  
-  const locations = [
-    "Mumbai", "Delhi", "Bangalore", "Hyderabad", "Pune", 
-    "Chennai", "Kolkata", "Ahmedabad", "Remote", "Work from Home"
-  ];
-
-  const toggleJobType = (value: string) => {
-    setSelectedJobTypes((prev) =>
-      prev.includes(value) ? prev.filter((t) => t !== value) : [...prev, value]
-    );
-  };
-
-  const applyFilters = () => {
-    const params = new URLSearchParams(searchParams); // ✅ UPDATED: Preserve existing params
+  // Handle job type checkbox changes
+  const handleJobTypeChange = (jobType: string) => {
+    const newJobTypes = selectedJobTypes.includes(jobType)
+      ? selectedJobTypes.filter((type) => type !== jobType)
+      : [...selectedJobTypes, jobType];
     
-    // Add filter params
-    if (selectedJobTypes.length > 0) {
-      params.set('job_types', selectedJobTypes.join(','));
-    } else {
-      params.delete('job_types');
-    }
+    setSelectedJobTypes(newJobTypes);
     
-    if (selectedLocation) {
-      params.set('location', selectedLocation);
-    } else {
-      params.delete('location');
-    }
-    
-    if (payRange[1] < 100000) {
-      params.set('max_salary', payRange[1].toString());
-    } else {
-      params.delete('max_salary');
-    }
-    
-    navigate(`/find-job?${params.toString()}`); // ✅ UPDATED: Use /find-job instead of /browse-job
-  };
-
-  const clearFilters = () => {
-    setSelectedJobTypes([]);
-    setSelectedLocation("");
-    setPayRange([0, 100000]);
-    
-    // ✅ UPDATED: Keep only search/category params and preserve current URL structure
     const params = new URLSearchParams(searchParams);
-    params.delete('job_types');
-    params.delete('location');
-    params.delete('max_salary');
-    
-    navigate(`/find-job${params.toString() ? `?${params.toString()}` : ''}`);
+    if (newJobTypes.length > 0) {
+      params.set("job_types", newJobTypes.join(","));
+    } else {
+      params.delete("job_types");
+    }
+    setSearchParams(params);
+  };
+
+  // ✅ ADDED: Handle location dropdown changes
+  const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setSelectedLocation(value);
+
+    const params = new URLSearchParams(searchParams);
+    if (value) {
+      params.set("location", value);
+    } else {
+      params.delete("location");
+    }
+    setSearchParams(params);
+  };
+  // Handle salary slider changes
+  const handleSalaryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value, 10);
+    setMinSalary(value);
+
+    const params = new URLSearchParams(searchParams);
+    // Only set the param if it's not the minimum value, to keep the URL clean
+    if (value > salaryRange.min) {
+      params.set("min_salary", value.toString());
+    } else {
+      params.delete("min_salary");
+    }
+    setSearchParams(params);
   };
 
   return (
     <div className="space-y-6">
-      {/* Title */}
-      <div className="flex items-center justify-between border-b pb-2">
-        <h2 className="text-xl font-semibold">Filters</h2>
-        <button
-          onClick={clearFilters}
-          className="text-sm text-blue-600 hover:text-blue-800"
-        >
-          Clear All
-        </button>
-      </div>
-
       {/* Job Type */}
       <div>
-        <h3 className="font-medium mb-3">Job Type</h3>
+        <h3 className="text-lg font-semibold mb-3 text-gray-800">Job Type</h3>
         <div className="space-y-2">
-          {jobTypes.map((type) => (
-            <label key={type.value} className="flex items-center space-x-2 cursor-pointer">
+          {jobTypesList.map((type) => (
+            <label key={type} className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
-                checked={selectedJobTypes.includes(type.value)}
-                onChange={() => toggleJobType(type.value)}
+                value={type}
+                checked={selectedJobTypes.includes(type)}
+                onChange={() => handleJobTypeChange(type)}
                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
               />
-              <span className="text-sm">{type.label}</span>
+              <span className="text-sm text-gray-700">{type}</span>
             </label>
           ))}
         </div>
       </div>
 
-      {/* Location */}
+      {/* ✅ ADDED: Location Filter */}
       <div>
-        <h3 className="font-medium mb-3">Location</h3>
+        <h3 className="text-lg font-semibold mb-3 text-gray-800">Location</h3>
         <select
           value={selectedLocation}
-          onChange={(e) => setSelectedLocation(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          aria-label="Filter by location"
+          onChange={handleLocationChange}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
         >
           <option value="">All Locations</option>
-          {locations.map((city) => (
+          {locationsList.map((city) => (
             <option key={city} value={city}>
               {city}
             </option>
@@ -130,40 +124,31 @@ export default function FilterSidebar() {
         </select>
       </div>
 
-      {/* Pay Range */}
-      <div>
-        <h3 className="font-medium mb-3">Maximum Salary</h3>
-        <input
-          type="range"
-          min="0"
-          max="100000"
-          step="5000"
-          value={payRange[1]}
-          onChange={(e) => setPayRange([0, Number(e.target.value)])}
-          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-        />
-        <div className="flex justify-between text-xs text-gray-600 mt-1">
-          <span>₹0</span>
-          <span>₹{payRange[1].toLocaleString()}</span>
-        </div>
-      </div>
 
-      {/* Action Buttons */}
-      <div className="space-y-2">
-        <button 
-          onClick={applyFilters}
-          className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-        >
-          Apply Filters
-        </button>
-        
-        {/* Filter count indicator */}
-        {(selectedJobTypes.length > 0 || selectedLocation || payRange[1] < 100000) && (
-          <div className="text-center text-sm text-gray-600">
-            {selectedJobTypes.length + (selectedLocation ? 1 : 0) + (payRange[1] < 100000 ? 1 : 0)} filter(s) active
+      {/* Salary Range Filter */}
+      <div>
+        <h3 className="text-lg font-semibold mb-3 text-gray-800">Minimum Salary Expected</h3>
+        <div className="space-y-3">
+          <input
+            type="range"
+            min={salaryRange.min}
+            max={salaryRange.max}
+            value={minSalary}
+            onChange={handleSalaryChange}
+            step={5000} // Adjust step as needed
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+          />
+          <div className="flex justify-between text-sm text-gray-600">
+            <span>₹{salaryRange.min.toLocaleString()}</span>
+            <span className="font-medium text-blue-600">
+              ₹{minSalary.toLocaleString()}+
+            </span>
+            <span>₹{salaryRange.max.toLocaleString()}</span>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
 }
+
+export default FilterSidebar;

@@ -2,9 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import AfterLoginNavbar from "../components/AfterLoginNavbar";
-import { Eye, Download, Edit, Building, Globe, Phone, Mail } from "lucide-react";
-import { jsPDF } from "jspdf";
-import { toPng } from "html-to-image";
+import { Eye, Edit, Building, Globe, Phone, Mail } from "lucide-react";
 import { useUser } from "../context/UserContext";
 
 interface BusinessProfileData {
@@ -34,7 +32,6 @@ export default function BusinessProfilePage() {
   const [businessProfile, setBusinessProfile] = useState<BusinessProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [downloading, setDownloading] = useState(false);
   const navigate = useNavigate();
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -89,35 +86,6 @@ export default function BusinessProfilePage() {
   }, [profile, navigate, setProfile]);
 
   const handleViewCard = () => navigate("/business-profile-card");
-
-  const handleDownloadPdf = async () => {
-    if (!cardRef.current || !businessProfile) return;
-
-    setDownloading(true);
-
-    try {
-      const dataUrl = await toPng(cardRef.current, {
-        cacheBust: true,
-        backgroundColor: '#ffffff',
-        filter: (node) => !(node.tagName === "IMG"),
-      });
-
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const imgProps = pdf.getImageProperties(dataUrl);
-
-      const imgWidth = pageWidth;
-      const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
-
-      pdf.addImage(dataUrl, "PNG", 0, 0, imgWidth, imgHeight);
-      pdf.save(`${businessProfile.business_name}-profile.pdf`);
-    } catch (error) {
-      console.error("Download failed:", error);
-      alert("Download failed. Please try again.");
-    } finally {
-      setDownloading(false);
-    }
-  };
 
   if (loading)
     return (
@@ -216,14 +184,6 @@ export default function BusinessProfilePage() {
               >
                 <Eye size={16} />
                 View Card
-              </button>
-              <button
-                onClick={handleDownloadPdf}
-                disabled={downloading}
-                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm disabled:opacity-50"
-              >
-                <Download size={16} />
-                {downloading ? "Downloading..." : "PDF"}
               </button>
             </div>
           </div>

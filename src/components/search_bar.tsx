@@ -94,7 +94,9 @@ export default function SearchBar({
       try {
         const key = `${window.location.pathname}:searchBarState`;
         sessionStorage.removeItem(key);
-      } catch {}
+      } catch {
+        // ignore session storage errors
+      }
       return;
     }
 
@@ -122,21 +124,37 @@ export default function SearchBar({
       }
 
       // ✅ 2) Search Businesses (only if there's a text query)
-      const businessesQuery = trimmed
-        ? supabase
+      let businessesQueryBuilder = null;
+      if (trimmed) {
+        businessesQueryBuilder = supabase
             .from("businesses")
             .select("id, business_name, logo_url, industry")
             .or(`business_name.ilike.%${trimmed}%,industry.ilike.%${trimmed}%`)
-            .limit(Math.ceil(effectiveLimit * 0.2)) // Allocate 20% to businesses
+            .limit(Math.ceil(effectiveLimit * 0.2)); // Allocate 20% to businesses
+
+        if (locationText && locationText.trim()) {
+          businessesQueryBuilder = businessesQueryBuilder.ilike("address", `%${locationText.trim()}%`);
+        }
+      }
+      const businessesQuery = businessesQueryBuilder
+        ? businessesQueryBuilder
         : Promise.resolve({ data: [] as any[], error: null });
 
       // ✅ 3) Search Companies (only if there's a text query)
-      const companiesQuery = trimmed
-        ? supabase
+      let companiesQueryBuilder = null;
+      if (trimmed) {
+        companiesQueryBuilder = supabase
             .from("Companies")
             .select("id, name")
             .ilike("name", `%${trimmed}%`)
-            .limit(Math.ceil(effectiveLimit * 0.2)) // Allocate 20% to companies
+            .limit(Math.ceil(effectiveLimit * 0.2)); // Allocate 20% to companies
+
+        if (locationText && locationText.trim()) {
+          companiesQueryBuilder = companiesQueryBuilder.ilike("address", `%${locationText.trim()}%`);
+        }
+      }
+      const companiesQuery = companiesQueryBuilder
+        ? companiesQueryBuilder
         : Promise.resolve({ data: [] as any[], error: null });
 
       // Execute all queries in parallel
@@ -146,13 +164,25 @@ export default function SearchBar({
         companiesQuery,
       ]);
 
+      // Define interfaces for the data shapes
+      interface BusinessData {
+        id: string;
+        business_name: string;
+        logo_url: string | null;
+        industry: string | null;
+      }
+      interface CompanyData {
+        id: string;
+        name: string;
+      }
+
       // Check for errors
       if (profilesRes.error) throw profilesRes.error;
-      if ((businessesRes as any).error) throw (businessesRes as any).error;
-      if ((companiesRes as any).error) throw (companiesRes as any).error;
+      if (businessesRes.error) throw businessesRes.error;
+      if (companiesRes.error) throw companiesRes.error;
 
       // ✅ Transform results to unified format
-      const professionalResults = (profilesRes.data || []).map((p: any) => ({
+      const professionalResults = (profilesRes.data || []).map(p => ({
         ...p,
         type: "professional" as const,
       }));
@@ -188,7 +218,7 @@ export default function SearchBar({
         ...companyResults,
       ].slice(0, effectiveLimit); // Ensure we don't exceed the limit
 
-      if (merged.length === 0 && trimmed) {
+      if (merged.length === 0 && (trimmed || locationText || minExperience)) {
         setMessage("No results found for your search");
       } else {
         setMessage(null);
@@ -201,7 +231,9 @@ export default function SearchBar({
       try {
         const key = `${window.location.pathname}:searchBarState`;
         sessionStorage.setItem(key, JSON.stringify({ query: text, results: merged }));
-      } catch {}
+      } catch {
+        // ignore session storage errors
+      }
 
     } catch (e) {
       console.error("Search error:", e);
@@ -231,7 +263,9 @@ export default function SearchBar({
       try {
         const key = `${window.location.pathname}:searchBarState`;
         sessionStorage.removeItem(key);
-      } catch {}
+      } catch {
+        // ignore session storage errors
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);

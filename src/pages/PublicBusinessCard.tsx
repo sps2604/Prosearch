@@ -204,8 +204,8 @@ export default function PublicBusinessCard() {
             <div className="flex flex-col items-center">
               <div 
                 ref={cardRef} 
-                className="bg-white shadow-2xl rounded-2xl overflow-hidden w-full max-w-md mx-auto"
-                style={{ aspectRatio: "3.5/2" }}
+                className="bg-white shadow-2xl rounded-2xl overflow-hidden mx-auto"
+                style={{ width: '350px', height: '200px' }}
               >
                 {/* Card Header */}
                 <div className="p-8 bg-gradient-to-r from-orange-500 to-amber-600 text-white text-center h-2/3 flex flex-col justify-center">
