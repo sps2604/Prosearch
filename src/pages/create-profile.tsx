@@ -14,7 +14,8 @@ export default function CreateProfile() {
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [uploading, setUploading] = useState(false);
   const [loadingUserType, setLoadingUserType] = useState(true);
-  const [showToast, setShowToast] = useState(false); // ✅ ADDED: Toast state
+  const [showToast, setShowToast] = useState(false);
+  asadsddes // ✅ ADDED: Toast state
   const navigate = useNavigate();
   const { setProfile } = useUser();
 
